@@ -1,0 +1,14 @@
+{
+  "schema": "literary-review-manifest-v1",
+  "example_is_synthetic": true,
+  "expected_paragraph_ids": ["p1", "p2"],
+  "source_reviewed_ids": ["p1", "p2"],
+  "style_reviewed_ids": ["p1", "p2"],
+  "changed_ids": ["p2"],
+  "revision_rechecked_ids": ["p2"],
+  "expected_note_ids": ["n1"],
+  "notes": [{"id": "n1", "anchor_id": "p2", "reviewed": true}],
+  "unresolved": [],
+  "stages": [{"name": "synthetic-example", "model": "not-run", "reasoning": "not-run"}],
+  "human_literary_acceptance": false
+}

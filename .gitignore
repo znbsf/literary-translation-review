@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+private/
+sources/
+outputs/
+*.epub
+*.sqlite
+*.pdf
