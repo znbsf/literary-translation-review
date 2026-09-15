@@ -28,6 +28,34 @@ class CoverageTests(unittest.TestCase):
         self.data['revision_rechecked_ids'] = []
         self.assertIn('changed_paragraphs_not_rechecked', validate(self.data))
 
+    def test_each_understanding_dimension_must_change_a_translation_decision(self):
+        self.data['whole_book_understanding']['decisions'].pop()
+        self.assertIn('understanding_not_mapped_to_decisions', validate(self.data))
+
+    def test_confirmed_glossary_must_be_complete_and_version_locked(self):
+        self.data['confirmed_glossary']['locked'] = False
+        self.assertIn('confirmed_glossary_not_version_locked', validate(self.data))
+
+    def test_source_first_candidate_must_precede_comparison(self):
+        self.data['source_first']['frozen_before_comparison_ids'].pop()
+        self.assertIn('source_first_candidates_not_frozen_before_comparison', validate(self.data))
+
+    def test_source_first_input_boundary_is_explicit(self):
+        self.data['source_first']['excluded_inputs'].pop()
+        self.assertIn('source_first_context_boundary_unverified', validate(self.data))
+
+    def test_operator_exposure_requires_an_explicit_status(self):
+        self.data['source_first']['operator_exposure_status'] = 'assumed-unseen'
+        self.assertIn('operator_exposure_status_invalid', validate(self.data))
+
+    def test_user_budget_is_a_hard_limit(self):
+        self.data['execution']['budget_used']['value'] = 3
+        self.assertIn('user_budget_hard_limit_exceeded', validate(self.data))
+
+    def test_checkpoint_and_coverage_are_recorded(self):
+        self.data['execution']['checkpoints'] = []
+        self.assertIn('checkpoint_metadata_missing', validate(self.data))
+
     def test_invalid_note_anchor(self):
         self.data['notes'][0]['anchor_id'] = 'absent'
         self.assertIn('note_anchor_invalid', validate(self.data))
@@ -37,7 +65,7 @@ class CoverageTests(unittest.TestCase):
         self.assertEqual(validate(self.data), [])
 
     def test_invalid_inputs_are_rejected(self):
-        for value in [None, [], {}, {'schema': 'literary-review-manifest-v1'}]:
+        for value in [None, [], {}, {'schema': 'literary-review-manifest-v2'}]:
             with self.subTest(value=value):
                 self.assertTrue(validate(value))
 

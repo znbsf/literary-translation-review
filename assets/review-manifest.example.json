@@ -1,14 +1,52 @@
 {
-  "schema": "literary-review-manifest-v1",
+  "schema": "literary-review-manifest-v2",
   "example_is_synthetic": true,
   "expected_paragraph_ids": ["p1", "p2"],
   "source_reviewed_ids": ["p1", "p2"],
   "style_reviewed_ids": ["p1", "p2"],
   "changed_ids": ["p2"],
   "revision_rechecked_ids": ["p2"],
+  "whole_book_understanding": {
+    "complete_book_read": true,
+    "dimensions": [
+      "relationships_and_history",
+      "character_arcs",
+      "plot_knowledge",
+      "fixed_wording",
+      "addressee_and_register",
+      "narrative_style",
+      "wordplay_imagery_foreshadowing",
+      "notes_versions_sources"
+    ],
+    "decisions": [
+      {"id": "d1", "dimension": "relationships_and_history", "source_locator": "p1", "translation_decision": "retain synthetic relationship cue"},
+      {"id": "d2", "dimension": "character_arcs", "source_locator": "p1", "translation_decision": "retain synthetic arc cue"},
+      {"id": "d3", "dimension": "plot_knowledge", "source_locator": "p1", "translation_decision": "preserve synthetic knowledge boundary"},
+      {"id": "d4", "dimension": "fixed_wording", "source_locator": "p2", "translation_decision": "apply synthetic confirmed wording"},
+      {"id": "d5", "dimension": "addressee_and_register", "source_locator": "p2", "translation_decision": "use synthetic audience-specific register"},
+      {"id": "d6", "dimension": "narrative_style", "source_locator": "p1", "translation_decision": "retain synthetic narrative distance"},
+      {"id": "d7", "dimension": "wordplay_imagery_foreshadowing", "source_locator": "p2", "translation_decision": "retain synthetic recurring image"},
+      {"id": "d8", "dimension": "notes_versions_sources", "source_locator": "p2", "translation_decision": "record synthetic version distinction"}
+    ]
+  },
+  "confirmed_glossary": {"version": "synthetic-v1", "locked": true, "complete_for_scope": true},
+  "source_first": {
+    "required": true,
+    "candidate_ids": ["p1", "p2"],
+    "frozen_before_comparison_ids": ["p1", "p2"],
+    "context_sources": ["source", "whole-book-understanding", "verified-prior-work", "confirmed-glossary"],
+    "context_artifact_ids": ["source:p1-p2", "prior:synthetic-set", "glossary:synthetic-v1"],
+    "excluded_inputs": ["current-target", "rewrite-advice", "old-translation-excerpts", "draft-derived-target-language-summary"],
+    "operator_exposure_status": "not-claimed"
+  },
   "expected_note_ids": ["n1"],
   "notes": [{"id": "n1", "anchor_id": "p2", "reviewed": true}],
   "unresolved": [],
-  "stages": [{"name": "synthetic-example", "model": "not-run", "reasoning": "not-run"}],
+  "execution": {
+    "user_budget_hard_limit": {"unit": "synthetic-unit", "value": 2},
+    "budget_used": {"unit": "synthetic-unit", "value": 0},
+    "checkpoints": [{"name": "synthetic-complete", "status": "succeeded", "coverage_ids": ["p1", "p2"]}],
+    "stages": [{"name": "synthetic-example", "model": "not-run", "reasoning": "not-run", "coverage_ids": ["p1", "p2"]}]
+  },
   "human_literary_acceptance": false
 }

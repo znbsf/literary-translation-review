@@ -1,6 +1,6 @@
 # Literary Translation Review
 
-A Codex skill for source-grounded, book-length literary translation review, character dialogue evidence, cross-volume wording consistency, annotated EPUB editions, and transparent critical commentary.
+A Codex skill for source-grounded, book-length literary translation review and source-first retranslation, with complete-book understanding, character dialogue evidence, cross-volume wording consistency, annotated EPUB editions, and transparent critical commentary.
 
 这是一套可复用审校流程，不是全自动翻译软件，也不附带任何小说语料、模型账号或API服务。模型和供应商可配置；没有对特定模型的文学质量作保证。
 
