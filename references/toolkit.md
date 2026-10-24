@@ -1,40 +1,80 @@
-# 随附工具包
+# 随附工具包 ltr
 
-`scripts/ltr/` 是本 skill 的可选工具包：仅用 Python 标准库（OCR 读图另需 Pillow），按 [data-model.md](data-model.md) 建库与读写。没有工具包时，照该结构自建脚本即可，流程要求不变。
+`scripts/ltr/` 是本 skill 的工具包：Python 3.11+ 标准库实现（读取扫描图另需 Pillow），按 [data-model.md](data-model.md) 读写证据库，自带本机查看器。没有它时，照同一结构自建脚本即可，流程要求不变。
 
-> **状态：** 接口已确定，代码正从私有实践项目迁入。下表“状态”列为“规划”的命令尚不可用；在迁入完成前不要声称已运行它们。
+```sh
+python scripts/ltr <命令> [参数]            # 在 skill 目录下
+python -m ltr <命令> [参数]                 # 或把 scripts/ 加入 PYTHONPATH
+python scripts/ltr <命令> --help            # 每个命令的参数
+```
 
 ## 按工作流步骤
 
-| 步骤 | 命令 | 作用 | 状态 |
-| --- | --- | --- | --- |
-| 1 冻结来源与词表 | `ltr import-epub <book.epub> --project <dir>` | 只读解析 EPUB，建立稳定段落 ID 与定位，保存原始快照 | 规划 |
-| | `ltr import-scans <pages/> --project <dir>` | 扫描页入库（图片摘要、尺寸），不做 OCR | 规划 |
-| | `ltr glossary add / confirm / lock / export` | 固定表达提案、裁定、锁定版本、导出给批次共享 | 规划 |
-| 2 全书理解 | `ltr ledger add / check` | 八维理解台账，每条绑定原文定位与翻译决定；写入审校清单 | 规划 |
-| 3 按证据对齐 | `ltr evidence lines --speaker <名>` / `--term <词>` / `--near <段ID>` | 查人物台词、词语在各版本的译法、段落上下文；只返回已绑定来源的结果 | 规划 |
-| | `ltr align plan / run / review / index` | 对白对齐候选：有限计划、单会话串行、独立模型复核、只读索引 | 规划 |
-| | `ltr attribute run / index` | 说话人/听者候选与证据片段 | 规划 |
-| | `ltr quotes run / review / index` | 无引号版本的引用片段候选 | 规划 |
-| | `ltr ocr vision / order / regions` | 扫描页整页 OCR、阅读顺序几何、区域转写候选 | 规划 |
-| 4 生成与审校 | `ltr context build --target <段范围>` | source-first 干净上下文：原文、全书理解、已核历史证据、锁定词表；自动排除当前译稿与旧译，并记录输入清单 | 规划 |
-| | `ltr candidate freeze` | 冻结新候选后才允许读取当前译稿比较 | 规划 |
-| 5 改后复查 | `ltr workbench --config <cfg>` | 本机查看器：概览、对白（含全部机器意见与上下文）、扫描页、复核标签与导出 | 规划 |
-| 6 交付 | `ltr assemble epub / txt` | 按最终正文组装读者版，重排译注编号与往返链接 | 规划 |
-| | `python scripts/check_manifest.py <manifest.json>` | 核对申报的覆盖、改后复查与执行记录一致 | **可用** |
+| 步骤 | 命令 | 作用 |
+| --- | --- | --- |
+| 1 冻结来源 | `ltr project inspect / locate / import` | 只读解析 EPUB 元数据与导航；按显式 spine 导入，建立稳定段落定位与原始快照 |
+| 3 按证据对齐 | `ltr quotes` → `quotes-review` → `quotes-index` | 无引号版本的引用片段候选、独立复核、只读索引 |
+| | `ltr align` / `align-plan` / `align-campaign` → `align-review` → `align-index` | 对白对齐提议、按冻结证据规划目标、有限连续会话、独立复核、只读索引 |
+| | `ltr attribute` → `attribute-index` / `attribute-projection` | 说话人/听者建议（证据片段必须是原文唯一子串）及严格投影 |
+| | `ltr ocr-vision plan / run` | 整页 OCR 候选 |
+| | `ltr ocr-order` | 已有 OCR 的阅读顺序几何分列 |
+| | `ltr ocr-regions` | 按几何区域逐块转写，每块标记已转写或不可读，写入区域存储 |
+| | `ltr publisher-scan`、`ltr review-queue` | 依已核书目查 ISBN 出现位置；生成带库指纹的待复核队列 |
+| 4 生成与审校 | `ltr project check-context` | 校验上下文卡：证据来源、偏移与知情终点 |
+| | `ltr project render / apply` | 生成原文-译文对照审校页；导入人工修改并保留历史版本 |
+| 5 改后复查 | `ltr workbench --config <cfg> --port 0` | 本机查看器：概览、对白（上下文与全部机器意见）、扫描页叠框、复核标签与导出 |
+| 6 交付 | `ltr assemble` | 按最终正文组装 TXT/EPUB |
+| | `python scripts/check_manifest.py <manifest.json>` | 核对申报的覆盖、改后复查与执行记录 |
 
-## 共同运行规则
+尚未实现（规划）：词表锁定命令、八维理解台账命令、跨版本证据查询命令、source-first 上下文生成与候选冻结命令。在实现前按 [evidence-and-corpus.md](evidence-and-corpus.md) 手工记录，不要声称运行过它们。
+
+## 查看器配置
+
+把配置文件放在书稿与仓库之外：
+
+```json
+{
+  "corpora": [{
+    "id": "book", "name": "某系列", "path": "../data/book-corpus",
+    "candidate_index": "…/quote-index.sqlite",
+    "alignment_index": "…/alignment-index.sqlite",
+    "attribution_index": "…/attribution-index.sqlite",
+    "ocr_vision_candidates": "…/vision-run/",
+    "ocr_reading_order_candidates": "…/reading-order/",
+    "ocr_regions": "…/regions.sqlite",
+    "run_snapshot": "…/run-snapshot.json",
+    "bibliography": "…/publisher-bibliography.json",
+    "publisher_identifiers": "…/publisher-id-candidates.json",
+    "source_snapshot_db": "…/dialogue.source-<sha>.sqlite", "source_snapshot_sha256": "<sha>"
+  }],
+  "review_dir": "…/reviews"
+}
+```
+
+除 `id`、`path`（含 `dialogue.sqlite` 的目录）外都可选；每个证据路径必须在所有语料目录之外。服务只监听 `127.0.0.1`，只读打开语料库，复核标签写入 `review_dir`。
+
+## 模型调用规则
 
 所有调用模型的命令：
 
 - 必须显式加 `--execute`；默认只做计划与预检。
-- 一个进程一个会话，串行调用，历史只留在内存；思考块按原样回传以维持会话。
-- 调用次数、请求字节、输出 token 三项预算是硬上限，超出前停止。
-- 遇到第一个失败即停止，不自动重试；“结果未知”与“失败”分开记录。
+- 一个进程一个会话，串行调用，历史只在内存；思考块按原样回传以维持会话。
+- 调用次数、请求字节、输出 token 预算是硬上限，超出前停止。
+- 第一个失败即停止，不自动重试；“结果未知”与“失败”分开记录。
 - 每次调用前后复核来源库与图片摘要，变化即停止且不发布该批结果。
-- 认证只从环境变量读取（如 `ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN`）；模型与供应商可配置，不写入仓库。
-- 输出目录必须在语料目录之外且为新建；只写候选与不含正文的摘要。
+- 认证只从环境变量读取（`ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN`，Messages API 格式的网关均可）；模型由参数指定，不写入仓库。
+- 输出目录必须新建且在语料目录之外；只写候选与不含正文的摘要。
 
-## 迁入来源
+## 其他工具
 
-工具包从一个实际的日中轻小说项目整理而来；那里两个语料库的结构即本 skill 的标准结构。迁入时只带代码与合成测试，不带任何正文、私有路径或项目专用名单。
+`scripts/ltr/tools/` 含归属候选准备、检测、合并、受控写库（备份、事务、回执）与语料泄露扫描（`python -m ltr.tools.leak_scan --root <数据根> --corpus <语料目录> [--declared 豁免清单.json]`）。写库工具不会被查看器调用。
+
+部分候选 schema 名沿用最早实践项目的命名（如 `haruhi-alignment-candidates-v1`），是格式标识而非作品限定；已发布的数据按原名校验。
+
+## 测试
+
+```sh
+python -m unittest discover -s tests -t .
+```
+
+全部使用合成数据，约一分钟。`tests/ltr/` 与 `scripts/ltr/` 包结构一一对应。

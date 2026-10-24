@@ -15,15 +15,15 @@ description: Review or retranslate book-length literature from the source, inclu
 
 ## 资料库与工具
 
-每个项目建一个证据库，结构见 [references/data-model.md](references/data-model.md)：正式语料只读，模型候选与复核标签放在库外，候选的资格标记恒为待复核；绑定来源数据的摘要，不以代码版本作为读取条件。随附工具包 `scripts/ltr` 按下列步骤提供命令，现状与运行规则见 [references/toolkit.md](references/toolkit.md)；没有工具包时按同一结构自建，要求不变。工具只承担确定性工作和受控的模型调用：检索命中、模型候选和程序检查都不是文学判断。
+每个项目建一个证据库，结构见 [references/data-model.md](references/data-model.md)：正式语料只读，模型候选与复核标签放在库外，候选的资格标记恒为待复核；绑定来源数据的摘要，不以代码版本作为读取条件。随附工具包 `scripts/ltr`（`python scripts/ltr <命令>`）按下列步骤提供命令，命令表与运行规则见 [references/toolkit.md](references/toolkit.md)；没有工具包时按同一结构自建，要求不变。工具只承担确定性工作和受控的模型调用：检索命中、模型候选和程序检查都不是文学判断。
 
 ## 工作流
 
-1. **冻结来源、范围与词表。** 建立版本清单、稳定段落ID和定位；完整共享已确认名称与固定表达并锁定版本。提案与确认项分开，后续建议不得回退已确认裁定。（`ltr import-epub`、`ltr glossary`）
-2. **先理解全书。** 完整阅读本书后建立八维理解和翻译决策台账，再按实际问题反查相关前作；不要先扫描全部历史库。每条理解必须指向具体翻译决定。详细字段见 [references/evidence-and-corpus.md](references/evidence-and-corpus.md)。（`ltr ledger`）
-3. **按证据对齐。** 检索命中只是候选；核对原文、人物、语境和版本后才能称为对应。区分读者知识与人物当时所知，并分开记录原文事实、角色叙述和审校解释。（`ltr evidence`、对齐与归属候选、查看器）
-4. **生成或审校。** 新译或需要独立重译时，使用原文、全书理解及已核实的历史证据组织干净上下文；先冻结 source-first 新候选，再与当前译稿或旧译比较。审校既有译稿时先查意义，再查声线、固定译法和文学装置。（`ltr context build` 记录输入与排除项，`ltr candidate freeze`）
-5. **改后复查。** 保留原译、建议、采纳理由和新译。复查所有改动与必要前后文，并同步译注。正确原译允许保留，不能为了体现工作量强制修改。（查看器复核标签、审校清单）
+1. **冻结来源、范围与词表。** 建立版本清单、稳定段落ID和定位；完整共享已确认名称与固定表达并锁定版本。提案与确认项分开，后续建议不得回退已确认裁定。（`ltr project import`）
+2. **先理解全书。** 完整阅读本书后建立八维理解和翻译决策台账，再按实际问题反查相关前作；不要先扫描全部历史库。每条理解必须指向具体翻译决定。详细字段见 [references/evidence-and-corpus.md](references/evidence-and-corpus.md)。
+3. **按证据对齐。** 检索命中只是候选；核对原文、人物、语境和版本后才能称为对应。区分读者知识与人物当时所知，并分开记录原文事实、角色叙述和审校解释。（`ltr align`、`ltr attribute`、`ltr quotes`、`ltr ocr-*` 生成候选，`ltr workbench` 查看）
+4. **生成或审校。** 新译或需要独立重译时，使用原文、全书理解及已核实的历史证据组织干净上下文；先冻结 source-first 新候选，再与当前译稿或旧译比较。审校既有译稿时先查意义，再查声线、固定译法和文学装置。（`ltr project check-context`、`ltr project render / apply`）
+5. **改后复查。** 保留原译、建议、采纳理由和新译。复查所有改动与必要前后文，并同步译注。正确原译允许保留，不能为了体现工作量强制修改。（`ltr workbench` 复核标签、审校清单）
 6. **解释与交付。** 制作说明根据实际记录填写；正文、译注和评论明确分开。分别完成全文复核、结构核验和实际阅读检查后再发送。（`ltr assemble`、`scripts/check_manifest.py`）
 
 ## 文学判断
@@ -52,7 +52,7 @@ description: Review or retranslate book-length literature from the source, inclu
 
 - 全书理解、干净候选、建库、对齐、错误分类、执行记录与失败恢复：读 [references/evidence-and-corpus.md](references/evidence-and-corpus.md)。
 - 证据库的表结构、资格标记、库外候选、词表与复核标签格式：读 [references/data-model.md](references/data-model.md)。
-- 工具包命令、模型调用规则与迁入状态：读 [references/toolkit.md](references/toolkit.md)。
+- 工具包命令、查看器配置与模型调用规则：读 [references/toolkit.md](references/toolkit.md)。
 - 卷首、卷末、来源分级和资源页：读 [references/edition-layout.md](references/edition-layout.md)，按 [assets/edition-template.md](assets/edition-template.md) 填写。
 - 成品旁证清单可使用 [assets/review-manifest.example.json](assets/review-manifest.example.json)。运行 `python scripts/check_manifest.py <manifest.json>` 检查申报的一致性；它不会阅读原书，也不会证明翻译准确。
 

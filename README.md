@@ -20,18 +20,25 @@ An agent skill (Codex, Claude Code, and other tools that read `SKILL.md`) for so
 | [SKILL.md](SKILL.md) | 入口：流程与文学判断 |
 | `references/` | 资料与对白规范、[证据库结构](references/data-model.md)、[工具包](references/toolkit.md)、读者版格式 |
 | `assets/` | 制作说明模板、审校清单示例 |
-| `scripts/` | 清单校验器；可选工具包 `ltr`（迁入中，见工具包说明） |
+| `scripts/ltr/` | 工具包：EPUB 项目、证据库候选（对齐/归属/引号/OCR）、模型运行器、本机查看器、交付组装 |
+| `scripts/check_manifest.py` | 审校清单校验器 |
+| `tests/` | 全部使用合成数据 |
 
 不要将私有书稿、语料库或本机路径提交到此仓库。
 
-## 无需模型的示例检查
+## 工具包与检查
 
-需要 Python 3.10 或更新版本，无第三方依赖：
+需要 Python 3.11 或更新版本；仅读取扫描图时另需 Pillow。
 
 ```sh
+python scripts/ltr --help                                   # 全部命令
+python scripts/ltr project demo --project <新的私有目录>      # 合成示例，零模型调用
+python scripts/ltr workbench --config <本机配置.json> --port 0   # 本机查看器
 python scripts/check_manifest.py assets/review-manifest.example.json
-python -m unittest discover -s tests -v
+python -m unittest discover -s tests -t .
 ```
+
+命令与配置见 [references/toolkit.md](references/toolkit.md)。
 
 校验器检查申报的段落、注释与改后复查覆盖关系，不读取小说正文，也不证明语义、文风或设备适配正确。真实工程还需源文件绑定、实际读回和文学审校。
 

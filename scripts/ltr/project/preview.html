@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-__NONCE__'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>小说翻译 · 本地对照</title>
+<style>
+body{margin:0;background:#f5f3ef;color:#272722;font:16px/1.65 system-ui,sans-serif}header,main{max-width:1180px;margin:auto;padding:24px}header{border-bottom:1px solid #c8c5bc}h1{font-size:26px;margin:0 0 6px}p{margin:6px 0}small{color:#666}button,select,input{font:inherit;padding:7px 12px;border:1px solid #888;border-radius:6px;background:white}button{cursor:pointer}button:disabled{opacity:.45;cursor:default}.toolbar{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:24px;background:white;border:1px solid #dedbd3;border-radius:10px;margin-bottom:18px}.source{white-space:pre-wrap;overflow-wrap:anywhere}textarea{box-sizing:border-box;width:100%;min-height:170px;font:inherit;border:1px solid #a7aaa0;border-radius:6px;padding:12px}.unit-label{font-size:12px;color:#68685e;margin-bottom:10px}.status{font-size:13px;margin-top:8px}.notice{background:#fff4d6;padding:12px;border-radius:6px}.empty{padding:24px}details{margin:12px 0}@media(max-width:720px){.pair{grid-template-columns:1fr}header,main{padding:14px}}
+</style>
+<header><h1>小说翻译 · 本地对照</h1><p>逐段看原文、编辑译文，保存可复核的修改。</p>
+<p class="notice">这是人工对照原型，尚未接入模型翻译或双语评审。页面修改保存在当前内存中，关闭前请下载修改文件。</p>
+<div class="toolbar"><button id="save">下载修改文件</button><button id="export">导出译文草稿</button><button id="confirmAll">确认未改动且非空的译段</button></div>
+<small id="summary"></small><details><summary>如何保存与继续</summary><p>下载的 JSON 只含本次译文修改与版本绑定。使用本地工具的 apply 命令导入，再打开更新后的 review.html。编辑过的译段导入后保持草稿；再次核对并确认。该页面和修改文件均含私人内容，请保存在项目私有目录。</p></details></header>
+<main id="content"></main>
+<script nonce="__NONCE__">
+const project=__PROJECT__;
+const original=new Map(project.units.map(u=>[u.id,u.target]));
+const source=new Map(project.source.map(p=>[p.id,p]));
+function el(tag,text,cls){const x=document.createElement(tag);if(text!==undefined)x.textContent=text;if(cls)x.className=cls;return x;}
+function summary(){document.querySelector('#summary').textContent=`项目版本 ${project.revision} · ${project.units.length} 段 · ${project.units.filter(u=>u.status==='accepted').length} 段已确认 · 模型调用 0`;}
+function draw(){const main=document.querySelector('#content');main.replaceChildren();for(const unit of project.units){const p=source.get(unit.id);const row=el('section',undefined,'pair');const left=el('div');left.append(el('div','原文 · '+unit.id,'unit-label'),el('div',p.text,'source'));if(p.ruby?.length){const d=el('details');d.append(el('summary','注音'));for(const r of p.ruby)d.append(el('p',r.base+' → '+r.reading));left.append(d);}const right=el('div');right.append(el('div','译文','unit-label'));const ta=el('textarea');ta.value=unit.target;ta.setAttribute('aria-label','译文 '+unit.id);const status=el('p',unit.status==='accepted'?'已确认':'待核对','status');ta.addEventListener('input',()=>{unit.target=ta.value;unit.status='draft';status.textContent='已修改 · 待保存与复核';summary();});right.append(ta,status);row.append(left,right);main.append(row);}summary();}
+function download(name,text,type){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+document.querySelector('#save').onclick=()=>download('translation-edits.json',JSON.stringify({book_hash:project.book_hash,source_digest:project.source_digest,base_revision:project.revision,units:project.units.map(({id,target,status})=>({id,target,status}))},null,2),'application/json');
+document.querySelector('#export').onclick=()=>download('translation-draft.txt','【待人工验收的译文草稿】\n\n'+project.units.map(u=>u.target||'【本段未译】').join('\n\n'),'text/plain');
+document.querySelector('#confirmAll').onclick=()=>{for(const u of project.units)if(u.target.trim()&&u.target===original.get(u.id))u.status='accepted';draw();};
+draw();
+</script></html>
