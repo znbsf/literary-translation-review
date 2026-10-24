@@ -32,6 +32,14 @@ def main() -> int:
     imp.add_argument("epub", type=Path)
     imp.add_argument("--items", nargs="+", required=True)
     imp.add_argument("--project", type=Path, required=True)
+    imp.add_argument("--corpus", type=Path, help="New corpus directory directly inside the new project")
+    for name in ("migrate", "bind", "recover"):
+        cmd = sub.add_parser(name)
+        cmd.add_argument("--project", type=Path, required=True)
+        if name != "recover":
+            cmd.add_argument("--corpus", type=Path, required=True)
+        if name == "bind":
+            cmd.add_argument("--edition", required=True)
     for name in ("render", "preflight", "demo"):
         cmd = sub.add_parser(name)
         cmd.add_argument("--project", type=Path, required=True)
@@ -59,9 +67,24 @@ def main() -> int:
                               "match_count": result["match_count"], "model_calls": 0}))
         elif args.command == "import":
             private_root(args.project)
-            project = create_project(args.project, import_items(args.epub, args.items))
+            imported = import_items(args.epub, args.items)
+            if args.corpus is None:
+                project = create_project(args.project, imported)
+            else:
+                from .binding import create_bound_project
+                project = create_bound_project(args.project, imported, args.corpus)
             render(args.project, project)
             print(json.dumps({"status": "imported", "paragraphs": len(project["source"]), "model_calls": 0}))
+        elif args.command in ("migrate", "bind", "recover"):
+            from .binding import migrate_project, bind_project, recover_project
+            if args.command == "migrate":
+                project = migrate_project(args.project, args.corpus)
+            elif args.command == "bind":
+                project = bind_project(args.project, args.corpus, args.edition)
+            else:
+                project = recover_project(args.project)
+            render(args.project, project)
+            print(json.dumps({"status": args.command + "_complete", "revision": project["revision"], "model_calls": 0}))
         elif args.command == "render":
             render(args.project, read_project(args.project))
             print('{"status":"rendered","model_calls":0}')

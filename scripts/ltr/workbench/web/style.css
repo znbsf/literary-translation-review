@@ -220,3 +220,17 @@ textarea { width: 100%; resize: vertical; }
   .pipelines { grid-template-columns: 1fr; }
   .corpus-tile { min-width: 0; flex: 1 1 100%; }
 }
+
+/* evidence */
+.view-evidence { max-width: 1160px; margin: 0 auto; }
+.evidence-form { margin: 14px 0; }
+.evidence-fields { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,180px),1fr)); gap: 8px; margin-bottom: 10px; }
+.evidence-results { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.evidence-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 12px; min-width: 0; }
+.evidence-card.nested { margin-top: 12px; background: var(--bg); }
+.evidence-card-head, .evidence-record-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.evidence-record { margin-top: 10px; min-width: 0; overflow-wrap: anywhere; }
+.evidence-record blockquote { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; padding-left: 10px; border-left: 2px solid var(--border); }
+.evidence-record .mono { word-break: break-all; }
+.detail-tabs { display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.detail-tabs [aria-selected="true"] { color: var(--accent-text); background: var(--accent-soft); }

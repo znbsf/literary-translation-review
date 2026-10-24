@@ -1,5 +1,6 @@
 // One record in context: text, surrounding paragraphs, every machine opinion about it, and the review form.
 import { latest, request } from "./api.js";
+import { renderEvidenceTab } from "./evidence.js";
 import { BASIS, COMPLETION_STATUSES, CONFIDENCE, KINDS, MODEL_REVIEW, MODEL_REVIEW_TONE, SOURCES, VERDICTS,
   VERDICT_TONE, label } from "./labels.js";
 import { badge, details, empty, h, keyValues, loading, notice, num, replace, shortHash, time } from "./ui.js";
@@ -18,23 +19,29 @@ export async function renderDetail(pane, app, corpus, source, id, onClose) {
     return;
   }
   const item = data.item;
-  replace(pane,
-    h("div", { class: "pane-head" },
-      h("div", {}, h("h2", { class: "pane-title" }, item.edition_title || item.edition_id),
-        h("p", { class: "muted" }, `第 ${num(item.ordinal)} 段 · ${SOURCES[source]} · `, h("span", { class: "mono" }, item.id))),
-      close),
+  const header = h("div", { class: "pane-head" },
+    h("div", {}, h("h2", { class: "pane-title" }, item.edition_title || item.edition_id),
+      h("p", { class: "muted" }, "第 " + num(item.ordinal) + " 段 · " + SOURCES[source] + " · ", h("span", { class: "mono" }, item.id))), close);
+  const body = h("div", { role: "tabpanel", "aria-label": "详情内容" },
     h("blockquote", { class: "record-quote", lang: item.language || undefined }, item.text || "（无正文）"),
-    item.text_truncated ? notice(`仅显示前一部分；原文共 ${num(item.text_total_chars)} 字。`, "warn") : null,
-    contextBlock(data),
-    attributionBlock(data.attribution),
-    identityBlock(data.identity_suggestions),
-    quoteCandidateBlock(data.candidate),
-    alignmentCandidateBlock(data.alignment_candidate),
-    formalAlignmentBlock(data.alignment),
-    completionBlock(data.completion_alignment),
-    entryBlock(data.entry),
-    scansBlock(app, corpus, data.scan_pages),
+    item.text_truncated ? notice("仅显示前一部分；原文共 " + num(item.text_total_chars) + " 字。", "warn") : null,
+    contextBlock(data), attributionBlock(data.attribution), identityBlock(data.identity_suggestions),
+    quoteCandidateBlock(data.candidate), alignmentCandidateBlock(data.alignment_candidate), formalAlignmentBlock(data.alignment),
+    completionBlock(data.completion_alignment), entryBlock(data.entry), scansBlock(app, corpus, data.scan_pages),
     reviewBlock(app, corpus, source, id, data.review));
+  const evidence = h("div", { role: "tabpanel", "aria-label": "对白证据", hidden: true });
+  let loaded = false;
+  const buttons = ["详情", "证据"].map((label, index) => h("button", { type: "button", role: "tab",
+    class: "button ghost small", "aria-selected": index === 0 ? "true" : "false", onclick: () => {
+      body.hidden = index !== 0;
+      evidence.hidden = index !== 1;
+      buttons.forEach((button, i) => button.setAttribute("aria-selected", i === index ? "true" : "false"));
+      if (index === 1 && !loaded) {
+        loaded = true;
+        renderEvidenceTab(evidence, app, corpus, id);
+      }
+    } }, label));
+  replace(pane, header, h("div", { class: "detail-tabs", role: "tablist", "aria-label": "对白详情页签" }, buttons), body, evidence);
 }
 
 function block(title, ...body) {

@@ -231,5 +231,75 @@ class CorpusTests(unittest.TestCase):
         self.assertFalse((sentinel / "missing").exists())
 
 
+class LegacyOrdinalTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name) / "legacy"
+        init_corpus(self.root)
+        self.db = self.root / "dialogue.sqlite"
+        with closing(sqlite3.connect(self.db)) as con, con:
+            con.executescript("""
+                DELETE FROM metadata;
+                PRAGMA ignore_check_constraints=ON;
+                INSERT INTO editions(id) VALUES ('synthetic');
+                INSERT INTO paragraphs VALUES ('synthetic',0,'p0','abcdefghij','{}'),
+                                              ('synthetic',1,'p1','klmnopqrst','{}');
+                INSERT INTO dialogues(id,edition_id,ordinal,text,start_para,end_para)
+                    VALUES ('lower','synthetic',0,'a',0,0), ('upper','synthetic',1,'k',1,1);
+            """)
+            for key, rank, start, end in (("first", 1/3, 1, 3), ("second", 2/3, 4, 6)):
+                evidence = {"supplement_kind": "ascii_quotes",
+                            "source_span": {"start_para": 0, "start": start, "end_para": 0, "end": end}}
+                con.execute("""INSERT INTO dialogues(id,edition_id,ordinal,text,start_para,end_para,evidence_json)
+                    VALUES (?,'synthetic',?,?,0,0,?)""", (key, rank, 'abcdefghij'[start:end], json.dumps(evidence)))
+
+    def test_provenanced_legacy_insertions_warn_and_keep_api_numeric_order(self):
+        result = check_corpus(self.db)
+        self.assertEqual(result["status"], "pass", result["issues"])
+        self.assertIn({"code": "legacy_fractional_dialogue_ordinals", "count": 2}, result["warnings"])
+        store = WorkbenchStore(WorkbenchConfig([CorpusConfig("sample", "Synthetic", self.root)], None))
+        self.addCleanup(store.close)
+        rows = store.dialogues({"corpus": "sample"})["items"]
+        self.assertEqual([r["ordinal"] for r in rows], [0, 1/3, 2/3, 1])
+
+    def test_global_joined_offsets_require_exact_dialogue_text(self):
+        with closing(sqlite3.connect(self.db)) as con, con:
+            con.execute("UPDATE dialogues SET start_para=1,end_para=1 WHERE id IN ('lower','upper')")
+            for key, start, end in (("first",12,14),("second",15,17)):
+                evidence = {"supplement_kind":"ascii_quotes",
+                            "source_span":{"start_para":1,"start":start,"end_para":1,"end":end}}
+                con.execute("UPDATE dialogues SET start_para=1,end_para=1,text=?,evidence_json=? WHERE id=?",
+                            ("klmnopqrst"[start-11:end-11],json.dumps(evidence),key))
+        self.assertEqual(check_corpus(self.db)["status"], "pass")
+        with closing(sqlite3.connect(self.db)) as con, con:
+            con.execute("UPDATE dialogues SET text='synthetic different fragment' WHERE id='first'")
+        self.assertEqual(check_corpus(self.db)["status"], "fail")
+
+    def test_unknown_provenance_bad_slots_and_versioned_reals_still_fail(self):
+        for sql in (
+            "UPDATE dialogues SET evidence_json='{}' WHERE id='second'",
+            "PRAGMA ignore_check_constraints=ON; UPDATE dialogues SET ordinal=0.7 WHERE id='second'",
+            """INSERT INTO metadata VALUES ('schema','"ltr-corpus-v1"')""",
+        ):
+            with self.subTest(sql=sql):
+                backup = self.db.read_bytes()
+                with closing(sqlite3.connect(self.db)) as con, con:
+                    con.executescript(sql)
+                report = check_corpus(self.db)
+                self.assertEqual(report["status"], "fail")
+                self.assertIn("dialogues_invalid_ordinal", {r["code"] for r in report["issues"]})
+                self.db.write_bytes(backup)
+
+    def test_insertions_before_first_integer_are_ordering_keys(self):
+        with closing(sqlite3.connect(self.db)) as con, con:
+            con.executescript("""PRAGMA ignore_check_constraints=ON;
+                UPDATE dialogues SET ordinal=-0.6666666666666666 WHERE id='first';
+                UPDATE dialogues SET ordinal=-0.3333333333333333 WHERE id='second';
+                UPDATE dialogues SET start_para=1,end_para=1 WHERE id='lower';""")
+        report = check_corpus(self.db)
+        self.assertEqual(report["status"], "pass", report["issues"])
+        self.assertIn({"code": "legacy_fractional_dialogue_ordinals", "count": 2}, report["warnings"])
+
 if __name__ == "__main__":
     unittest.main()

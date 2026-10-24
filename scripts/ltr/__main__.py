@@ -17,6 +17,7 @@ COMMANDS = {
     "project": ("ltr.project", "EPUB inspect/locate/import, review page, edits, context checks (zero model calls)"),
     "assemble": ("ltr.project.batch_assemble", "assemble reviewed batches into TXT/EPUB"),
     "corpus": ("ltr.library.corpus", "initialize a private corpus or check an existing database read-only"),
+    "evidence": ("ltr.library.evidence", "read-only line, speaker and term evidence with provenance levels"),
     # step 3 — evidence candidates
     "quotes": ("ltr.quotes.batch", "quote-span candidates for editions without quote markup"),
     "quotes-review": ("ltr.quotes.review", "independent model review of quote candidates"),

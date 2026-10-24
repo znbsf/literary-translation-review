@@ -34,7 +34,11 @@ An agent skill (Codex, Claude Code, and other tools that read `SKILL.md`) for so
 python scripts/ltr --help                                   # 全部命令
 python scripts/ltr corpus init <新的私有目录>                 # 新建空库，拒绝覆盖
 python scripts/ltr corpus check <已有的dialogue.sqlite>       # 只读结构/引用检查，不证明文学质量
+python scripts/ltr project import <source.epub> --items <id> --project <P> --corpus <P/corpus>
+python scripts/ltr project migrate --project <P> --corpus <P/corpus>
+python scripts/ltr project recover --project <P>
 python scripts/ltr project demo --project <新的私有目录>      # 合成示例，零模型调用
+python scripts/ltr evidence line --config <cfg.json> --corpus <id> --dialogue <id>
 python scripts/ltr workbench --config <本机配置.json> --port 0   # 本机查看器
 python scripts/check_manifest.py assets/review-manifest.example.json
 python -m unittest discover -s tests -t .
