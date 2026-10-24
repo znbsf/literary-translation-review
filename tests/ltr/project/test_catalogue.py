@@ -6,7 +6,7 @@ from unittest.mock import patch
 import zipfile
 
 from ltr.project.catalogue import CatalogueError, locate_chapter
-from ltr.project.epub import _Book
+from ltr.project.epub import EpubBook
 
 
 class CatalogueTests(unittest.TestCase):
@@ -46,11 +46,11 @@ class CatalogueTests(unittest.TestCase):
     def test_ncx_range_reads_only_navigation(self):
         self.make(self.point("Target", "0.xhtml") + self.point("Next", "2.xhtml"))
         reads = []
-        original = _Book.read
+        original = EpubBook.read
         def record(book, name):
             reads.append(name)
             return original(book, name)
-        with patch.object(_Book, 'read', record):
+        with patch.object(EpubBook, 'read', record):
             result = locate_chapter(self.path, ["Target"])
         self.assertEqual(result['spine_ids'], ['s0', 's1'])
         self.assertEqual(result['confidence'], 'navigation-only')

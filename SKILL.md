@@ -53,6 +53,7 @@ description: Review or retranslate book-length literature from the source, inclu
 - 全书理解、干净候选、建库、对齐、错误分类、执行记录与失败恢复：读 [references/evidence-and-corpus.md](references/evidence-and-corpus.md)。
 - 证据库的表结构、资格标记、库外候选、词表与复核标签格式：读 [references/data-model.md](references/data-model.md)。
 - 工具包命令、查看器配置与模型调用规则：读 [references/toolkit.md](references/toolkit.md)。
+- 向模型发送原文或译文前的运行授权与角色边界：读 [references/authorization.md](references/authorization.md)。
 - 卷首、卷末、来源分级和资源页：读 [references/edition-layout.md](references/edition-layout.md)，按 [assets/edition-template.md](assets/edition-template.md) 填写。
 - 成品旁证清单可使用 [assets/review-manifest.example.json](assets/review-manifest.example.json)。运行 `python scripts/check_manifest.py <manifest.json>` 检查申报的一致性；它不会阅读原书，也不会证明翻译准确。
 

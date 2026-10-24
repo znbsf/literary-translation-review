@@ -1,6 +1,7 @@
 """Private single-pass book translation, with explicit bounded technical retries."""
 from __future__ import annotations
 
+from .storage import read_private_json as _read
 import argparse
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 import json
@@ -25,11 +26,6 @@ issues 可记录不确定的指代、译名或表达问题，但不能代替正�
 TECHNICAL_FAILURES = {'runtime_timeout', 'runtime_failed', 'runtime_unavailable',
                       'invalid_runtime_json', 'invalid_runtime_result'}
 REPAIR_PROMPT = PROMPT + '\n本次仅补齐前次遗漏的 source 段落；已有译文不会交给你修改。只翻译本次列出的缺失ID，一次完成。'
-
-
-def _read(path):
-    private_root(path)
-    return json.loads(path.read_text(encoding='utf-8'))
 
 
 def _id(value):
@@ -369,14 +365,14 @@ def run(root, model, workers=8):
         return progress
 
 
-if __name__ == '__main__':
+def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('command', choices=['run', 'status', 'retry', 'repair-missing'])
     parser.add_argument('--project', type=Path, required=True)
     parser.add_argument('--model')
     parser.add_argument('--workers', type=int, default=8)
     parser.add_argument('--job')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     try:
         if args.command == 'run':
             result = run(args.project, args.model, args.workers)
@@ -391,3 +387,7 @@ if __name__ == '__main__':
         code = str(error) if isinstance(error, CycleError) else 'batch_operation_failed'
         print(json.dumps({'status': 'stopped', 'code': code}), flush=True)
         raise SystemExit(2)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

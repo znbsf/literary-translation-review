@@ -6,7 +6,7 @@ import zipfile
 import zlib
 from urllib.parse import urlsplit
 
-from .epub import EpubError, _Book, _name, _paragraphs, _tag, _xml
+from .epub import EpubError, EpubBook, safe_archive_name, extract_paragraphs, xml_tag, parse_xml
 
 
 def _boundary(value):
@@ -15,10 +15,10 @@ def _boundary(value):
     parts = urlsplit(value)
     if parts.scheme or parts.netloc or parts.query or ("#" in value and not parts.fragment):
         raise EpubError("CHAPTER_INVALID_BOUNDARY")
-    return _name(parts.path), parts.fragment
+    return safe_archive_name(parts.path), parts.fragment
 
 
-def _clip(data, start, end):
+def clip_xhtml(data, start, end):
     try:
         data.decode("utf-8")
     except UnicodeDecodeError:
@@ -28,18 +28,18 @@ def _clip(data, start, end):
         raise EpubError("EPUB_UNSUPPORTED_ENCODING")
     # Only the inert HTML5 declaration is compatible; no external DTD/subset.
     data = re.sub(br"<!DOCTYPE[ \t\r\n]+html[ \t\r\n]*>", b"", data, count=1)
-    root = _xml(data)
-    bodies = [e for e in root if _tag(e) == "body"]
-    if _tag(root) != "html" or len(bodies) != 1:
+    root = parse_xml(data)
+    bodies = [e for e in root if xml_tag(e) == "body"]
+    if xml_tag(root) != "html" or len(bodies) != 1:
         raise EpubError("EPUB_INVALID_XHTML")
     events, anchors = [], {}
 
     def walk(node, forbidden=False):
-        forbidden = forbidden or _tag(node) in {"ruby", "rt", "rp", "script", "style"}
+        forbidden = forbidden or xml_tag(node) in {"ruby", "rt", "rp", "script", "style"}
         index = len(events)
         events.append((node, "enter"))
         for key in {node.get("id"), node.get("{http://www.w3.org/XML/1998/namespace}id"),
-                    node.get("name") if _tag(node) == "a" else None} - {None}:
+                    node.get("name") if xml_tag(node) == "a" else None} - {None}:
             anchors.setdefault(key, []).append((index, forbidden))
         events.append((node, "text"))
         for child in node:
@@ -63,7 +63,7 @@ def _clip(data, start, end):
         if not first <= index < last:
             if kind != "enter":
                 setattr(node, kind, None)
-            elif _tag(node) == "br":
+            elif xml_tag(node) == "br":
                 # Keep node positions for original DOM paths, but suppress breaks.
                 node.tag = "__clipped_break__"
     return root
@@ -80,7 +80,7 @@ def extract_selected_chapter(epub_path, catalogue_dict):
             raise EpubError("CHAPTER_AMBIGUOUS_SELECTION")
         start_path, start_fragment = _boundary(catalogue_dict.get("start_href"))
         end_path, end_fragment = _boundary(catalogue_dict.get("end_href"))
-        book = _Book(Path(epub_path))
+        book = EpubBook(Path(epub_path))
         with book.archive:
             if catalogue_dict.get("book_hash") != book.book_hash:
                 raise EpubError("CHAPTER_STALE_CATALOGUE")
@@ -94,9 +94,9 @@ def extract_selected_chapter(epub_path, catalogue_dict):
             paragraphs = []
             for item in selected:
                 source = book.read(item["href"])
-                root = _clip(source, start_fragment if item["href"] == start_path else "",
+                root = clip_xhtml(source, start_fragment if item["href"] == start_path else "",
                              end_fragment if item["href"] == end_path else "")
-                rows = _paragraphs(root, item["id"])
+                rows = extract_paragraphs(root, item["id"])
                 for row in rows:
                     row["locator"].update(href=item["href"],
                                           source_sha256=hashlib.sha256(source).hexdigest(),

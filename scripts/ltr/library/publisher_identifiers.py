@@ -28,6 +28,7 @@ ISBN occurrence is ever mapped to a local edition.
 
 from __future__ import annotations
 
+from ltr.core import contained as _contained
 import hashlib
 import json
 import re
@@ -236,14 +237,6 @@ def _normalize(text: str) -> str:
 
 def _strip_separators(text: str) -> str:
     return "".join(char for char in text if not (char.isspace() or char in _DASHES))
-
-
-def _contained(path: Path, root: Path) -> bool:
-    try:
-        path.relative_to(root)
-    except ValueError:
-        return False
-    return True
 
 
 def _read_bytes(path: Any, missing: str, unreadable: str, too_large: str) -> bytes:

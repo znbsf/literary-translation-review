@@ -6,7 +6,7 @@ import unittest
 import zipfile
 from unittest.mock import patch
 
-from ltr.project.epub import EpubError, _Book
+from ltr.project.epub import EpubError, EpubBook
 from ltr.project.selected_chapter import extract_selected_chapter
 from tests.ltr.project.test_epub import CONTAINER, OPF
 
@@ -47,11 +47,11 @@ class SelectedChapterTests(unittest.TestCase):
     def test_end_file_without_fragment_never_opened(self):
         self.make('<p id="start">One</p>')
         opened = []
-        original = _Book.read
+        original = EpubBook.read
         def read(book, name):
             opened.append(name)
             return original(book, name)
-        with patch.object(_Book, "read", read):
+        with patch.object(EpubBook, "read", read):
             self.run_selection(end="OPS/two.xhtml")
         self.assertNotIn("OPS/two.xhtml", opened)
 

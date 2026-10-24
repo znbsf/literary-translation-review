@@ -5,7 +5,7 @@ changes the formal database, or treats geometry as verified reading order.
 """
 from __future__ import annotations
 
-import hashlib
+from ltr.core import sha256 as _sha
 import math
 import os
 import stat
@@ -39,9 +39,6 @@ class OCRReadingOrderIndexError(ValueError):
 def _need(ok, code="ocr_reading_order_invalid"):
     if not ok:
         raise OCRReadingOrderIndexError(code)
-
-def _sha(raw):
-    return hashlib.sha256(raw).hexdigest()
 
 def _hash(value):
     return type(value) is str and HEX.fullmatch(value) is not None

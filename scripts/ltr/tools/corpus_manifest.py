@@ -134,11 +134,11 @@ def build(corpus: Path) -> dict[str, object]:
     return manifest
 
 
-def main() -> int:
+def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("corpus_dir")
     ap.add_argument("--force", action="store_true")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     corpus = Path(args.corpus_dir).resolve()
     target = corpus / "CORPUS-MANIFEST.json"
     if target.exists() and not args.force:

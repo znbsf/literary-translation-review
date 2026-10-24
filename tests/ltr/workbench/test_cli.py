@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import http.client
+import hashlib
 from contextlib import closing
 import json
 import os
@@ -143,6 +144,20 @@ class WorkbenchCliHTTPTests(unittest.TestCase):
         stdout, stderr = self._stop_process()
         self.cli_output = stdout + stderr
         self.assertNotIn(INVALID_FILTER, self.cli_output)
+
+    def test_tools_manifest_preserves_database_and_reports_candidate_flags(self) -> None:
+        before = hashlib.sha256(self.database_path.read_bytes()).hexdigest()
+        result = subprocess.run(
+            [sys.executable, "-B", "-m", "ltr.tools", "manifest",
+             str(self.corpus_dir)], cwd=REPO_ROOT / "scripts", capture_output=True, text=True,
+            timeout=10,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        manifest = json.loads((self.corpus_dir / "CORPUS-MANIFEST.json").read_text("utf-8"))
+        self.assertEqual(manifest["database"]["sha256"], before)
+        self.assertEqual(hashlib.sha256(self.database_path.read_bytes()).hexdigest(), before)
+        self.assertEqual(manifest["table_counts"]["dialogues"], 1)
+        self.assertNotIn("synthetic fixture text", json.dumps(manifest))
 
 
 if __name__ == "__main__":  # pragma: no cover - unittest entry point

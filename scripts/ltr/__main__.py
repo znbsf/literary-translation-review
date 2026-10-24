@@ -14,10 +14,11 @@ if __package__ in (None, ""):  # started as `python scripts/ltr`: make the packa
 
 COMMANDS = {
     # step 1 — sources, projects and glossary
-    "project": ("ltr.project", "EPUB inspect/locate/import, review page, edits, context checks (zero model calls)"),
+    "project": ("ltr.project", "EPUB preparation, corpus binding, review and explicitly authorized private workflows"),
     "assemble": ("ltr.project.batch_assemble", "assemble reviewed batches into TXT/EPUB"),
     "corpus": ("ltr.library.corpus", "initialize a private corpus or check an existing database read-only"),
     "evidence": ("ltr.library.evidence", "read-only line, speaker and term evidence with provenance levels"),
+    "tools": ("ltr.tools", "maintenance tools: alias maps, manifest, basis detection, identity merge, guarded writes, leak scan"),
     # step 3 — evidence candidates
     "quotes": ("ltr.quotes.batch", "quote-span candidates for editions without quote markup"),
     "quotes-review": ("ltr.quotes.review", "independent model review of quote candidates"),

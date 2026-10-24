@@ -45,6 +45,11 @@ def sha256(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def stat_identity(info: os.stat_result) -> tuple[int, int, int, int, int]:
+    # Windows lstat/fstat can disagree on ctime (creation vs change time).
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_size, info.st_mtime_ns)
+
+
 def canonical(value: Any) -> bytes:
     """Stable JSON bytes used for every content hash."""
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
@@ -103,6 +108,15 @@ def no_links(path: Path, code: str = "path_unsafe") -> None:
 def outside(path: Path, root: Path) -> bool:
     resolved, base = Path(path).resolve(), Path(root).resolve()
     return resolved != base and base not in resolved.parents
+
+
+def contained(path: Path, root: Path) -> bool:
+    """Check lexical containment; callers choose whether to resolve paths first."""
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
 
 
 def read_bounded(path: Path | str, maximum: int) -> bytes:

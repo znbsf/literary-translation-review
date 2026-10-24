@@ -1,6 +1,7 @@
 """Constants, errors and input sanitising shared by the workbench."""
 from __future__ import annotations
 
+from ltr.core import contained as _contained
 import json
 import math
 import re
@@ -184,14 +185,6 @@ def _like_pattern(text: str) -> str:
     """Turn user text into a safe ``LIKE`` contains-pattern (``ESCAPE '\\'``)."""
     escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     return "%" + escaped + "%"
-
-
-def _contained(path: Path, root: Path) -> bool:
-    try:
-        path.relative_to(root)
-    except ValueError:
-        return False
-    return True
 
 
 def _safe_relative_image_path(raw: Any) -> Path:

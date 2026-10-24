@@ -1,7 +1,8 @@
-"""Run from repository root: python -m ltr.project --help."""
+"""Run from the skill directory: python scripts/ltr project --help."""
 from __future__ import annotations
 import argparse
 import json
+from importlib import import_module
 from pathlib import Path
 import sys
 
@@ -12,14 +13,34 @@ from .contracts import ContractError, compile_context
 from .catalogue import CatalogueError, locate_chapter
 
 
+WORKFLOW_COMMANDS = {
+    "batch-assemble": "batch_assemble",
+    "batch-translate": "batch_translate",
+    "cycle-report": "cycle_report",
+    "dimension-cycle": "dimension_cycle",
+    "learning-detail": "learning_detail",
+    "learning-export": "learning_export",
+    "learning-finalize": "learning_finalize",
+    "learning-repair": "learning_repair",
+    "series-learning": "series_learning",
+    "series-synthesis": "series_synthesis",
+    "series-workflow": "series_workflow",
+    "series-registry": "series_registry",
+    "reference-window": "reference_window",
+}
+
+
 class QuietParser(argparse.ArgumentParser):
     def error(self, message):
         print('{"status":"rejected","code":"invalid_arguments"}')
         raise SystemExit(2)
 
 
-def main() -> int:
-    parser = QuietParser(description="Local-only novel translation preparation; zero model calls")
+def main(argv=None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] in WORKFLOW_COMMANDS:
+        return import_module("." + WORKFLOW_COMMANDS[argv[0]], __package__).main(argv[1:])
+    parser = QuietParser(description="Translation preparation and explicitly authorized private workflows")
     sub = parser.add_subparsers(dest="command", required=True)
     inspect = sub.add_parser("inspect", help="Inspect EPUB package metadata only")
     inspect.add_argument("epub", type=Path)
@@ -50,7 +71,9 @@ def main() -> int:
     context.add_argument("--project", type=Path, required=True)
     context.add_argument("--cards", type=Path, required=True)
     context.add_argument("--horizon", required=True)
-    args = parser.parse_args()
+    for name in WORKFLOW_COMMANDS:
+        sub.add_parser(name, help="Private workflow; use this subcommand's --help")
+    args = parser.parse_args(argv)
     try:
         if args.command == "demo":
             from .demo import demo

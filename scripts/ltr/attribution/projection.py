@@ -6,8 +6,8 @@ only when explicitly requested. Diagnostics never include source content.
 """
 from __future__ import annotations
 
+from ltr.core import sha256 as _sha
 import argparse
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -27,10 +27,6 @@ QUARANTINE_CODE = 'non_unique_evidence_span'
 class _Parser(argparse.ArgumentParser):
     def error(self, message):
         self.exit(2, 'attribution projection refused: invalid arguments\n')
-
-
-def _sha(raw: bytes) -> str:
-    return hashlib.sha256(raw).hexdigest()
 
 
 def _reparse(path: Path) -> bool:

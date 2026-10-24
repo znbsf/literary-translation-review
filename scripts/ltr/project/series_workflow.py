@@ -1,4 +1,5 @@
 """Resumable complete-chapter execution. Private outputs, count-only diagnostics."""
+from .storage import read_private_json as _read
 import argparse
 import json
 from pathlib import Path
@@ -11,11 +12,6 @@ from .cycle_report import render
 STAGES = {"context": "chapter-context.json", "dimensions": "dimensions-v1.json",
           "translate": "translation-v1.json", "compare": "comparison-v1.json",
           "retranslate": "translation-v2.json", "review": "comparison-v2.json"}
-
-
-def _read(path):
-    private_root(path)
-    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _immutable(path, value):
@@ -154,7 +150,7 @@ def run_chapter(project, model, series_root=None, series_run=None):
             raise
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["prepare", "run"])
     parser.add_argument("--project", type=Path, required=True)
@@ -163,7 +159,7 @@ def main():
     parser.add_argument("--model")
     parser.add_argument("--series-root", type=Path)
     parser.add_argument("--series-run")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     try:
         if args.command == "prepare":
             if not args.epub or not args.label:

@@ -67,6 +67,32 @@ python scripts/ltr project recover --project <P>
 
 回执、原始 XHTML 快照、项目、工作库及未完成暂存都属于私有书稿材料，须放在 Git 外。结构和绑定通过不等于阅读覆盖或文学验收。
 
+## 项目阶段工作流
+
+用 `python scripts/ltr project <子命令> --help` 查看参数；设置好 PYTHONPATH 后也可用 `python -m ltr.project <子命令>`。原模块入口保留，统一入口调用相同的解析器与实现。准备入口的 preflight 仍不可执行，不代表下面的模型工作流已获授权。
+
+| 子命令 | 作用 |
+| --- | --- |
+| dimension-cycle | 单范围的上下文、维度、初译、比较与复核阶段 |
+| series-workflow | 章节切块、输入冻结、阶段续接与精确装配 |
+| series-registry | 系列 profile、背景、人工确认与运行绑定 |
+| series-learning | 系列材料准备、逐块学习与状态查询 |
+| series-synthesis | 带证据绑定的跨卷候选汇总 |
+| learning-finalize | 有界等待已有任务后导出与汇总；STOP 或失败阻止新调用 |
+| learning-repair | 对明确失败证据作一次有界重核，保留旧尝试 |
+| learning-export | 导出候选知识与 registry，保留来源和未确认状态 |
+| learning-detail | 导出有效叶记录及逐块覆盖限制，不以摘要替代原记录 |
+| batch-translate | 批量翻译、状态、显式重试与缺漏修复 |
+| batch-assemble | 完整覆盖及摘要校验后导出私有 TXT/EPUB 初稿；也可用 ltr assemble |
+| reference-window | 显式选择既有译本窗口，写入新的私有文件，不声称已对齐 |
+| cycle-report | 生成私有阶段报告与逐段对照 |
+
+这些入口中的模型阶段可能直接发出真实调用，不统一要求 --execute。运行前须有覆盖材料、区段、语言、端点、允许外发内容、私有输出及调用/token/费用与重试上限的授权；命令注册本身不授予访问权，也不继承旧任务额度。开发验证只用合成夹具，不调用模型。
+
+保留 STOP 和既有尝试记录，不因旧交付或旧队列自动恢复、重置次数或重复发送。初译冻结后才可独立启用译本比较；修订撤销旧确认，候选不会自动获得参考资格。程序遍历、全文扫描、场景精读、修改复核、结构验证和阅读器验收分别报告。
+
+读者版卷首简述原稿、既有译稿及所用 AI，工程账本留在私有附件。目录使用实际节次，译注保留往返链接，EPUB3 导航与 NCX 目录保持一致；引用以书名、实际节号及可识别场景呈现，未核实章节须明示。购买入口须核对版本、作者及纸书/电子书，封面优先使用实际原稿封面，缺失时再取自已核实商品页，不生成替代封面。前作证据须对应具体翻译决定，读者背景不等于角色当时知情；先独立形成译法再比较现译。人工终译、术语确认和发布授权不能由工具成功替代。
+
 ## 证据查询
 
 ~~~sh
@@ -125,7 +151,7 @@ python scripts/ltr evidence term --config <cfg.json> --corpus <id> --text <liter
 
 ## 模型调用规则
 
-所有调用模型的命令：
+语料证据候选命令（quotes、align、attribute、ocr 等）的模型调用规则如下；project 阶段工作流使用上节说明的独立入口与授权边界：
 
 - 必须显式加 `--execute`；默认只做计划与预检。
 - 一个进程一个会话，串行调用，历史只在内存；思考块按原样回传以维持会话。
@@ -137,7 +163,24 @@ python scripts/ltr evidence term --config <cfg.json> --corpus <id> --text <liter
 
 ## 其他工具
 
-`scripts/ltr/tools/` 含归属候选准备、检测、合并、受控写库（备份、事务、回执）与语料泄露扫描（`python -m ltr.tools.leak_scan --root <数据根> --corpus <语料目录> [--declared 豁免清单.json]`）。写库工具不会被查看器调用。
+`python scripts/ltr tools <子命令> [参数]` 是维护工具统一入口，也可从 scripts/ 运行 `python -m ltr.tools <子命令>`。各原模块入口保留；参数原样传给对应工具，写库工具不会被查看器调用。
+
+| 子命令 | 作用 |
+| --- | --- |
+| alias-map / reviewed-alias-map | 生成待人工复核的别名提议 / 合并已复核别名 |
+| manifest | 生成语料清单和摘要，不修改数据库 |
+| basis-detect | 只读检测指代依据 |
+| merge-identities | 校验并合并归属候选批次 |
+| apply-attribution / correct-canonical | 受控写库，保留备份、事务与回执 |
+| leak-scan | 扫描语料泄露；沿用 --root / --corpus / --declared 参数 |
+
+~~~sh
+python scripts/ltr tools --help
+python scripts/ltr tools manifest <私有语料目录>
+python scripts/ltr tools leak-scan --root <数据根> --corpus <语料目录> --declared <豁免清单.json>
+~~~
+
+--declared 为可选参数；未使用豁免时省略。清单、候选和私有窗口均不是文学质量或正式库资格的证明。
 
 部分候选 schema 名沿用最早实践项目的命名（如 `haruhi-alignment-candidates-v1`），是格式标识而非作品限定；已发布的数据按原名校验。
 

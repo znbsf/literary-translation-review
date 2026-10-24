@@ -6,6 +6,7 @@ to disk, grant review eligibility, or substitute a historical SHA for a live DB.
 """
 from __future__ import annotations
 
+from ltr.core import stat_identity as _identity
 from collections import Counter
 from contextlib import contextmanager
 import hashlib
@@ -25,10 +26,6 @@ class LineageError(ValueError):
 def _need(condition, code):
     if not condition:
         raise LineageError(code)
-
-
-def _identity(info):
-    return (info.st_dev, info.st_ino, info.st_mode, info.st_size, info.st_mtime_ns)
 
 
 def _no_links(path):

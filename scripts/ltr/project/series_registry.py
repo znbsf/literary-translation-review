@@ -329,7 +329,7 @@ def import_cycle(root, cycle_root, profile_id, book_id, horizon):
     return revisions
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, required=True)
     sub = parser.add_subparsers(dest="operation", required=True)
@@ -354,7 +354,7 @@ def main():
     p.add_argument("--book-id", required=True); p.add_argument("--horizon", type=int, required=True)
     p.add_argument("--experimental", action="store_true"); p.add_argument("--character-id", action="append", default=[])
     p = sub.add_parser("status"); p.add_argument("--run-id", required=True)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     try:
         if args.operation == "init": result = initialize(args.root, args.series_id)
         elif args.operation == "book": result = register_book(args.root, args.book_id, args.source_digest, args.publication_order, args.paragraph_count, order_basis=args.order_basis)

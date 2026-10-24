@@ -25,6 +25,7 @@ Read-only; no database writes.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sqlite3
@@ -78,9 +79,14 @@ def detect(dialogue: dict, paragraphs: dict[int, str], pats, distances: list[int
     return {"basis_detector": basis, "evidence": evidence}
 
 
-def main() -> int:
-    db, edition, names_file, out = (Path(sys.argv[1]), sys.argv[2],
-                                    Path(sys.argv[3]), Path(sys.argv[4]))
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="Read-only referent-basis detection")
+    parser.add_argument("db", type=Path)
+    parser.add_argument("edition")
+    parser.add_argument("names_file", type=Path)
+    parser.add_argument("out", type=Path)
+    args = parser.parse_args(argv)
+    db, edition, names_file, out = args.db, args.edition, args.names_file, args.out
     con = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
     con.execute("pragma query_only=ON")

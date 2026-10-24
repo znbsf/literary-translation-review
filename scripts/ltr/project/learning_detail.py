@@ -111,12 +111,16 @@ def export_details(project):
     return {"status": "exported", **overview}
 
 
-if __name__ == "__main__":
+def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", type=Path, required=True)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     try:
         print(json.dumps(export_details(args.project)), flush=True)
     except Exception:
         print(json.dumps({"status": "stopped", "code": "learning_detail_export_failed"}), flush=True)
         raise SystemExit(2)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
