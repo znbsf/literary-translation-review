@@ -71,10 +71,14 @@ def repair(root,job_id,model):
     return {'status':'completed','job':job_id,'records':len(fixed['records']),'repaired_records':len(bad)}
 
 
-if __name__=='__main__':
+def main(argv=None):
     p=argparse.ArgumentParser();p.add_argument('--project',type=Path,required=True);p.add_argument('--job',required=True);p.add_argument('--model',required=True)
-    a=p.parse_args()
+    a=p.parse_args(argv)
     try:print(json.dumps(repair(a.project,a.job,a.model)),flush=True)
     except Exception as e:
         print(json.dumps({'status':'repair_failed','code':str(e) if isinstance(e,CycleError) else type(e).__name__}),flush=True)
         raise SystemExit(2)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

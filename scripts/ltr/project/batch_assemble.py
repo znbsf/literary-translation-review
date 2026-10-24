@@ -329,14 +329,18 @@ def assemble_book(root, book_id, destination):
         raise AssembleError("assemble_validation_failed") from None
 
 
-if __name__ == "__main__":
+def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", type=Path, required=True)
     parser.add_argument("--book", required=True)
     parser.add_argument("--destination", type=Path, required=True)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     try:
         print(json.dumps(assemble_book(args.project, args.book, args.destination)), flush=True)
     except AssembleError as error:
         print(json.dumps({"status": "stopped", "code": str(error)}), flush=True)
         raise SystemExit(2)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

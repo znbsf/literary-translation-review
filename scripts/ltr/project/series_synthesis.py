@@ -199,16 +199,20 @@ def run(root, model, workers=3, *, allow_partial=False):
         return export(root)
 
 
-if __name__ == '__main__':
+def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--project', type=Path, required=True)
     parser.add_argument('--model', required=True)
     parser.add_argument('--workers', type=int, default=3)
     parser.add_argument('--allow-partial', action='store_true')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     try:
         print(json.dumps(run(args.project, args.model, args.workers, allow_partial=args.allow_partial)), flush=True)
     except Exception as error:
         print(json.dumps({'status': 'stopped', 'code': str(error) if isinstance(error, CycleError)
                          else 'series_synthesis_failed'}), flush=True)
         raise SystemExit(2)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

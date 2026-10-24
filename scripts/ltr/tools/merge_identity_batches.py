@@ -18,6 +18,7 @@ Usage:
 """
 from __future__ import annotations
 
+import argparse
 import collections
 import json
 import sqlite3
@@ -38,9 +39,14 @@ def fail(msg: str) -> None:
     raise SystemExit(f"CONTRACT VIOLATION: {msg}")
 
 
-def main() -> int:
-    run_dir, db, edition, expected = (Path(sys.argv[1]), Path(sys.argv[2]),
-                                      sys.argv[3], int(sys.argv[4]))
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="Validate and merge identity candidates")
+    parser.add_argument("run_dir", type=Path)
+    parser.add_argument("db", type=Path)
+    parser.add_argument("edition")
+    parser.add_argument("expected", type=int)
+    args = parser.parse_args(argv)
+    run_dir, db, edition, expected = args.run_dir, args.db, args.edition, args.expected
     slices = sorted(run_dir.glob("batch-*.json"))
     if not slices:
         fail(f"no batch-*.json under {run_dir}")

@@ -228,11 +228,11 @@ def run(root,model,workers=3):
         return status(root)
 
 
-if __name__=='__main__':
+def main(argv=None):
     p=argparse.ArgumentParser();p.add_argument('command',choices=['prepare','run','status'])
     p.add_argument('--project',type=Path,required=True);p.add_argument('--pairing',type=Path)
     p.add_argument('--model');p.add_argument('--workers',type=int,default=3);p.add_argument('--chunk-chars',type=int,default=30000)
-    a=p.parse_args()
+    a=p.parse_args(argv)
     try:
         if a.command=='prepare': result=prepare(a.project,a.pairing,a.chunk_chars)
         elif a.command=='run': result=run(a.project,a.model,a.workers)
@@ -241,3 +241,7 @@ if __name__=='__main__':
     except Exception as error:
         print(json.dumps({'status':'stopped','code':str(error) if isinstance(error,CycleError) else type(error).__name__}),flush=True)
         raise SystemExit(2)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

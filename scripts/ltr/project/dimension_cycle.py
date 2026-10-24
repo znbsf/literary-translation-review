@@ -300,7 +300,7 @@ def run_stage(root: Path, stage: str, model: str, new_attempt=False, series_root
     print(json.dumps({"stage":stage,"status":"completed","calls":1,"seconds":seconds}))
 
 
-if __name__ == "__main__":
+def main(argv=None):
     parser=argparse.ArgumentParser()
     parser.add_argument("stage",choices=["prepare","context","dimensions","translate","compare","retranslate","review","refine","review3"])
     parser.add_argument("--project",type=Path,required=True)
@@ -308,7 +308,7 @@ if __name__ == "__main__":
     parser.add_argument("--new-attempt", action="store_true")
     parser.add_argument("--series-root", type=Path)
     parser.add_argument("--series-run")
-    args=parser.parse_args()
+    args=parser.parse_args(argv)
     try:
         if args.stage=="prepare":
             root=private_root(args.project)
@@ -323,3 +323,7 @@ if __name__ == "__main__":
         print(json.dumps({'status':'failed','code':str(error)}));raise SystemExit(2)
     except Exception:
         print('{"status":"failed","code":"local_cycle_failed"}');raise SystemExit(2)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

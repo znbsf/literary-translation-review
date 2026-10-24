@@ -10,7 +10,7 @@ import zipfile
 import zlib
 from urllib.parse import unquote, urlsplit
 
-from .epub import EpubError, _Book, _local_href, _name, _tag, _xml
+from .epub import EpubError, EpubBook, local_href, safe_archive_name, xml_tag, parse_xml
 
 
 class CatalogueError(ValueError):
@@ -34,7 +34,7 @@ def _navigation_xml(data: bytes, kind: str):
         if match is None or match.start() != declarations[0].start():
             raise CatalogueError("CATALOGUE_UNSAFE_XML")
         data = data[:match.start()] + data[match.end():]
-    return _xml(data)
+    return parse_xml(data)
 
 
 def _target(raw: str, base: str) -> str:
@@ -45,7 +45,7 @@ def _target(raw: str, base: str) -> str:
             or path.startswith("/") or any(c in path for c in ("\\", "\x00", ":"))
             or any(c in fragment for c in ("\x00", "#"))):
         raise CatalogueError("CATALOGUE_UNSAFE_HREF")
-    path = _name(posixpath.normpath(posixpath.join(base, path)))
+    path = safe_archive_name(posixpath.normpath(posixpath.join(base, path)))
     return path + ("#" + fragment if "#" in raw else "")
 
 
@@ -62,17 +62,17 @@ def _matches_label(label: str, candidates: set[str]) -> bool:
 
 
 def _ncx_records(root, base):
-    maps = [e for e in root if _tag(e) == "navMap"]
+    maps = [e for e in root if xml_tag(e) == "navMap"]
     if len(maps) != 1:
         raise CatalogueError("CATALOGUE_INVALID_NAVIGATION")
     records = []
 
     def walk(parent, inherited_end=None):
-        points = [e for e in parent if _tag(e) == "navPoint"]
+        points = [e for e in parent if xml_tag(e) == "navPoint"]
         parsed = []
         for point in points:
-            labels = [e for e in point if _tag(e) == "navLabel"]
-            contents = [e for e in point if _tag(e) == "content"]
+            labels = [e for e in point if xml_tag(e) == "navLabel"]
+            contents = [e for e in point if xml_tag(e) == "content"]
             if len(labels) != 1 or len(contents) != 1:
                 raise CatalogueError("CATALOGUE_INVALID_NAVIGATION")
             label = _normalize("".join(labels[0].itertext()))
@@ -88,7 +88,7 @@ def _ncx_records(root, base):
 
 
 def _nav_records(root, base):
-    navs = [e for e in root.iter() if _tag(e) == "nav" and
+    navs = [e for e in root.iter() if xml_tag(e) == "nav" and
             ("toc" in e.get("{http://www.idpf.org/2007/ops}type", "").split()
              or e.get("role") == "doc-toc")]
     if len(navs) != 1:
@@ -96,21 +96,21 @@ def _nav_records(root, base):
     records = []
 
     def walk(parent, inherited_end=None):
-        lists = [e for e in parent if _tag(e) == "ol"]
+        lists = [e for e in parent if xml_tag(e) == "ol"]
         if len(lists) > 1:
             raise CatalogueError("CATALOGUE_INVALID_NAVIGATION")
         if not lists:
             return
         parsed = []
         for item in lists[0]:
-            if _tag(item) != "li":
+            if xml_tag(item) != "li":
                 raise CatalogueError("CATALOGUE_INVALID_NAVIGATION")
-            labels = [e for e in item if _tag(e) in ("a", "span")]
+            labels = [e for e in item if xml_tag(e) in ("a", "span")]
             if len(labels) != 1:
                 raise CatalogueError("CATALOGUE_INVALID_NAVIGATION")
             node = labels[0]
             label = _normalize("".join(node.itertext()))
-            href = _target(node.get("href", ""), base) if _tag(node) == "a" else None
+            href = _target(node.get("href", ""), base) if xml_tag(node) == "a" else None
             parsed.append((item, label, href))
         for index, (item, label, href) in enumerate(parsed):
             end = parsed[index + 1][2] if index + 1 < len(parsed) else inherited_end
@@ -131,15 +131,15 @@ def locate_chapter(path: Path, label_candidates: list[str]) -> dict:
                 or any(not isinstance(x, str) or not _normalize(x) for x in label_candidates)):
             raise CatalogueError("CATALOGUE_INVALID_LABELS")
         labels = {_normalize(x) for x in label_candidates}
-        book = _Book(path)
+        book = EpubBook(path)
         with book.archive:
             result = {"book_hash": book.book_hash, "match_count": 0,
                       "spine_ids": [], "confidence": "unmatched"}
-            container = _xml(book.read("META-INF/container.xml"))
-            opf = _local_href(next(e.get("full-path") for e in container.iter() if _tag(e) == "rootfile"), "")
-            package = _xml(book.read(opf))
-            manifest = next(e for e in package if _tag(e) == "manifest")
-            spine = next(e for e in package if _tag(e) == "spine")
+            container = parse_xml(book.read("META-INF/container.xml"))
+            opf = local_href(next(e.get("full-path") for e in container.iter() if xml_tag(e) == "rootfile"), "")
+            package = parse_xml(book.read(opf))
+            manifest = next(e for e in package if xml_tag(e) == "manifest")
+            spine = next(e for e in package if xml_tag(e) == "spine")
             navs = [e for e in manifest if "nav" in e.get("properties", "").split()]
             kind = "nav"
             if not navs:
@@ -155,11 +155,11 @@ def locate_chapter(path: Path, label_candidates: list[str]) -> dict:
             expected_media = "application/xhtml+xml" if kind == "nav" else "application/x-dtbncx+xml"
             if nav.get("media-type") != expected_media:
                 raise CatalogueError("CATALOGUE_INVALID_NAVIGATION")
-            nav_path = _local_href(nav.get("href", ""), posixpath.dirname(opf))
+            nav_path = local_href(nav.get("href", ""), posixpath.dirname(opf))
             # Navigation may legally be in the spine, but it is opened solely
             # because the manifest explicitly identifies it as navigation.
             root = _navigation_xml(book.read(nav_path), kind)
-            if _tag(root) != ("html" if kind == "nav" else "ncx"):
+            if xml_tag(root) != ("html" if kind == "nav" else "ncx"):
                 raise CatalogueError("CATALOGUE_INVALID_NAVIGATION")
             records = (_nav_records if kind == "nav" else _ncx_records)(root, posixpath.dirname(nav_path))
             matches = [(start, end) for label, start, end in records if _matches_label(label, labels)]

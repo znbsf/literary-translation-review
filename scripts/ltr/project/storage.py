@@ -51,6 +51,12 @@ def write_json(path: Path, value: dict) -> None:
     atomic_write(path, json.dumps(value, ensure_ascii=False, indent=2) + "\n")
 
 
+def read_private_json(path: Path):
+    """Read workflow JSON after enforcing the private-root boundary."""
+    private_root(path)
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def read_project(root: Path) -> dict:
     root = private_root(root)
     path = root / "project.json"

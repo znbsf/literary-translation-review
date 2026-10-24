@@ -5,9 +5,9 @@ changes OCR receipts, calls a model, or stores OCR text.
 """
 from __future__ import annotations
 
+from ltr.core import sha256 as _sha
 import argparse
 from datetime import datetime, timezone
-import hashlib
 import io
 import json
 import os
@@ -56,7 +56,6 @@ class InputRejected(ValueError):
 def _need(ok,code="geometry_run_invalid"):
     if not ok: raise RunError(code)
 
-def _sha(raw): return hashlib.sha256(raw).hexdigest()
 def _is_hash(v): return type(v) is str and HEX.fullmatch(v) is not None
 def _int(v,lo=0): return type(v) is int and v>=lo
 def _json_bytes(obj):
@@ -476,7 +475,3 @@ def main(argv=None):
         return 2
 
 if __name__=="__main__": raise SystemExit(main())
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

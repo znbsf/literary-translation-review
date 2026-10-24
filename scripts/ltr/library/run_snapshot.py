@@ -6,6 +6,7 @@ Scope identity is opaque: this reader cannot prove cross-worker disjointness.
 """
 from __future__ import annotations
 
+from ltr.core import stat_identity as _identity
 from datetime import datetime, timedelta
 import hashlib
 import json
@@ -54,11 +55,6 @@ class RunSnapshotError(ValueError):
 def _require(value, code='run_snapshot_invalid'):
     if not value:
         raise RunSnapshotError(code)
-
-
-def _identity(info):
-    # Windows lstat/fstat can disagree on ctime (creation vs change time).
-    return (info.st_dev, info.st_ino, info.st_mode, info.st_size, info.st_mtime_ns)
 
 
 def _ancestors(path):

@@ -1,6 +1,7 @@
 """Export verified private learning proposals without copying source paragraphs."""
 from __future__ import annotations
 
+from .storage import read_private_json as _read
 import argparse
 import json
 from pathlib import Path
@@ -15,11 +16,6 @@ CATEGORIES = {
     'translation_choices': '译名与翻译选择',
 }
 KINDS = {'source': '日文原文中的作者表现', 'translation': '现有中文译本的选择'}
-
-
-def _read(path):
-    private_root(path)
-    return json.loads(path.read_text(encoding='utf-8'))
 
 
 def _id(value):
@@ -251,13 +247,17 @@ def export_learning(root, registry_root=None):
     return result
 
 
-if __name__ == '__main__':
+def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--project', type=Path, required=True)
     parser.add_argument('--registry', type=Path)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     try:
         print(json.dumps(export_learning(args.project, args.registry)), flush=True)
     except Exception:
         print(json.dumps({'status': 'stopped', 'code': 'learning_export_failed'}), flush=True)
         raise SystemExit(2)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

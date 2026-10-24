@@ -45,12 +45,12 @@ class EpubTests(unittest.TestCase):
 
     def test_metadata_does_not_open_body_or_navigation(self):
         self.make(extras=[("OPS/nav.xhtml", b'<!DOCTYPE invalid>'), ("OPS/toc.ncx", b'bad')])
-        original = epub._Book.read
+        original = epub.EpubBook.read
         opened = []
         def record(book, name):
             opened.append(name)
             return original(book, name)
-        with patch.object(epub._Book, "read", record):
+        with patch.object(epub.EpubBook, "read", record):
             result = epub.inspect_epub(self.path)
         self.assertEqual(opened, ["META-INF/container.xml", "OPS/book.opf"])
         self.assertEqual(result["title"], "Synthetic")
@@ -217,11 +217,11 @@ class EpubTests(unittest.TestCase):
     def test_snapshot_hash_and_content_survive_file_replacement(self):
         self.make()
         expected_hash = hashlib.sha256(self.path.read_bytes()).hexdigest()
-        original = epub._Book.read
+        original = epub.EpubBook.read
         def replace_after_snapshot(book, name):
             self.path.write_bytes(b"replaced file")
             return original(book, name)
-        with patch.object(epub._Book, "read", replace_after_snapshot):
+        with patch.object(epub.EpubBook, "read", replace_after_snapshot):
             result = epub.import_items(self.path, ["one"])
         self.assertEqual(result["book_hash"], expected_hash)
         self.assertEqual(result["items"][0]["paragraphs"][0]["text"], "A 猫 B.")

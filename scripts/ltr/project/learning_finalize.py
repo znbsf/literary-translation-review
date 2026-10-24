@@ -42,9 +42,9 @@ def finish(root,model,timeout=14400):
     return result
 
 
-if __name__=='__main__':
+def main(argv=None):
     p=argparse.ArgumentParser();p.add_argument('--project',type=Path,required=True);p.add_argument('--model',required=True)
-    a=p.parse_args()
+    a=p.parse_args(argv)
     try:
         print('{"status":"finalization_attached"}',flush=True)
         print(json.dumps(finish(a.project,a.model)),flush=True)
@@ -52,3 +52,7 @@ if __name__=='__main__':
         write_json(a.project/'finalization-status.json',{'status':'failed','code':type(error).__name__})
         print(json.dumps({'status':'failed','code':type(error).__name__}),flush=True)
         raise SystemExit(2)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

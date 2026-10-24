@@ -113,8 +113,12 @@ def render(root):
     return summary
 
 
-if __name__=='__main__':
+def main(argv=None):
     parser=argparse.ArgumentParser()
     parser.add_argument('--project',type=Path,required=True)
-    args=parser.parse_args()
+    args=parser.parse_args(argv)
     print(json.dumps(render(args.project),ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

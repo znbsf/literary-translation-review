@@ -49,14 +49,14 @@ def close(mapping: dict, where: str) -> tuple[dict, list]:
     return out, cycles
 
 
-def main() -> int:
+def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("provisional")
     ap.add_argument("registry")
     ap.add_argument("out")
     ap.add_argument("--tag", required=True)
     ap.add_argument("--force", action="store_true")
-    a = ap.parse_args()
+    a = ap.parse_args(argv)
 
     out = Path(a.out)
     if out.exists() and not a.force:

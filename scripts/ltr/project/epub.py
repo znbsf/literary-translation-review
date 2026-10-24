@@ -34,7 +34,7 @@ class EpubError(ValueError):
     """Only fixed codes are safe for engineering diagnostics."""
 
 
-def _name(value: str) -> str:
+def safe_archive_name(value: str) -> str:
     if (not value or "\\" in value or "\x00" in value or ":" in value
             or value.startswith("/")
             or any(p in (".", "..", "") for p in value.rstrip("/").split("/"))):
@@ -42,19 +42,19 @@ def _name(value: str) -> str:
     return value
 
 
-def _local_href(value: str, base: str) -> str:
+def local_href(value: str, base: str) -> str:
     parts = urlsplit(value)
     if parts.scheme or parts.netloc or parts.query or parts.fragment:
         raise EpubError("EPUB_UNSAFE_PATH")
-    path = _name(unquote(parts.path))
-    return _name(posixpath.join(base, path))
+    path = safe_archive_name(unquote(parts.path))
+    return safe_archive_name(posixpath.join(base, path))
 
 
-def _tag(element: ET.Element) -> str:
+def xml_tag(element: ET.Element) -> str:
     return element.tag.rsplit("}", 1)[-1]
 
 
-def _xml(data: bytes) -> ET.Element:
+def parse_xml(data: bytes) -> ET.Element:
     # NUL also excludes UTF-16/32 encodings that could bypass the declaration scan.
     if b"\x00" in data or re.search(br"<!\s*(DOCTYPE|ENTITY)\b", data, re.I):
         raise EpubError("EPUB_UNSAFE_XML")
@@ -73,7 +73,7 @@ def _xml(data: bytes) -> ET.Element:
     return root
 
 
-class _Book:
+class EpubBook:
     def __init__(self, path: Path):
         source_path = Path(path).absolute()
         for component in (source_path, *source_path.parents):
@@ -91,8 +91,8 @@ class _Book:
         names = set()
         total = 0
         for entry in entries:
-            _name(entry.orig_filename)  # ZipInfo normalizes backslashes on Windows.
-            name = _name(entry.filename)
+            safe_archive_name(entry.orig_filename)  # ZipInfo normalizes backslashes on Windows.
+            name = safe_archive_name(entry.filename)
             if name.rstrip("/") in names:
                 raise EpubError("EPUB_DUPLICATE_ENTRY")
             names.add(name.rstrip("/"))
@@ -106,32 +106,32 @@ class _Book:
             total += entry.file_size
         if total > MAX_TOTAL_BYTES:
             raise EpubError("EPUB_EXPANSION_LIMIT")
-        container = _xml(self.read("META-INF/container.xml"))
-        roots = [e for e in container.iter() if _tag(e) == "rootfile"]
+        container = parse_xml(self.read("META-INF/container.xml"))
+        roots = [e for e in container.iter() if xml_tag(e) == "rootfile"]
         if len(roots) != 1 or not roots[0].get("full-path"):
             raise EpubError("EPUB_INVALID_CONTAINER")
-        opf_path = _local_href(roots[0].get("full-path"), "")
-        package = _xml(self.read(opf_path))
-        if _tag(package) != "package":
+        opf_path = local_href(roots[0].get("full-path"), "")
+        package = parse_xml(self.read(opf_path))
+        if xml_tag(package) != "package":
             raise EpubError("EPUB_INVALID_PACKAGE")
-        children = {_tag(e): e for e in package}
+        children = {xml_tag(e): e for e in package}
         if len(children) != len(package):
             raise EpubError("EPUB_INVALID_PACKAGE")
         if not all(k in children for k in ("metadata", "manifest", "spine")):
             raise EpubError("EPUB_INVALID_PACKAGE")
         metadata = children["metadata"]
-        self.title = next(("".join(e.itertext()).strip() for e in metadata if _tag(e) == "title"), "")
-        self.language = next(("".join(e.itertext()).strip() for e in metadata if _tag(e) == "language"), "")
+        self.title = next(("".join(e.itertext()).strip() for e in metadata if xml_tag(e) == "title"), "")
+        self.language = next(("".join(e.itertext()).strip() for e in metadata if xml_tag(e) == "language"), "")
         manifest = {}
         hrefs = {}
         href_counts = {}
         for item in children["manifest"]:
-            if _tag(item) != "item":
+            if xml_tag(item) != "item":
                 raise EpubError("EPUB_INVALID_MANIFEST")
             key = item.get("id")
             if not key or key in manifest:
                 raise EpubError("EPUB_INVALID_MANIFEST")
-            href = _local_href(item.get("href", ""), posixpath.dirname(opf_path))
+            href = local_href(item.get("href", ""), posixpath.dirname(opf_path))
             media_type = item.get("media-type")
             if (href not in names or
                     (href in hrefs and hrefs[href] != media_type)):
@@ -144,7 +144,7 @@ class _Book:
         self.spine = []
         for entry in children["spine"]:
             key = entry.get("idref")
-            if (_tag(entry) != "itemref" or key not in manifest
+            if (xml_tag(entry) != "itemref" or key not in manifest
                     or any(i["id"] == key for i in self.spine)):
                 raise EpubError("EPUB_INVALID_SPINE")
             href, media_type = manifest[key]
@@ -168,10 +168,10 @@ class _Book:
                 "language": self.language, "spine": self.spine}
 
 
-def _paragraphs(root: ET.Element, item_id: str) -> list[dict]:
-    if _tag(root) != "html":
+def extract_paragraphs(root: ET.Element, item_id: str) -> list[dict]:
+    if xml_tag(root) != "html":
         raise EpubError("EPUB_INVALID_XHTML")
-    bodies = [e for e in root if _tag(e) == "body"]
+    bodies = [e for e in root if xml_tag(e) == "body"]
     if len(bodies) != 1:
         raise EpubError("EPUB_INVALID_XHTML")
     paragraphs = []
@@ -198,7 +198,7 @@ def _paragraphs(root: ET.Element, item_id: str) -> list[dict]:
         return "".join(output)
 
     def inline(node: ET.Element) -> str:
-        if _tag(node) in ignored:
+        if xml_tag(node) in ignored:
             return ""
         return (node.text or "") + "".join(inline(c) + (c.tail or "") for c in node)
 
@@ -215,12 +215,12 @@ def _paragraphs(root: ET.Element, item_id: str) -> list[dict]:
 
     def visit(node: ET.Element, path: str) -> None:
         nonlocal owner, preserve_space
-        tag = _tag(node)
+        tag = xml_tag(node)
         if tag in ignored:
             return
         if tag == "ruby":
             base = normalize([(inline(node), preserve_space)])
-            reading = normalize([("".join("".join(e.itertext()) for e in node.iter() if _tag(e) == "rt"), preserve_space)])
+            reading = normalize([("".join("".join(e.itertext()) for e in node.iter() if xml_tag(e) == "rt"), preserve_space)])
             chunks.append((base, preserve_space))
             ruby.append({"base": base, "reading": reading})
             return
@@ -237,7 +237,7 @@ def _paragraphs(root: ET.Element, item_id: str) -> list[dict]:
         chunks.append((node.text or "", preserve_space))
         counters = {}
         for child in node:
-            name = _tag(child)
+            name = xml_tag(child)
             counters[name] = counters.get(name, 0) + 1
             visit(child, f"{path}/{name}[{counters[name]}]")
             chunks.append((child.tail or "", preserve_space))
@@ -253,7 +253,7 @@ def _paragraphs(root: ET.Element, item_id: str) -> list[dict]:
 
 def _operate(path: Path, item_ids: list[str] | None) -> dict:
     try:
-        book = _Book(path)
+        book = EpubBook(path)
         with book.archive:
             result = book.metadata()
             if item_ids is not None:
@@ -267,7 +267,7 @@ def _operate(path: Path, item_ids: list[str] | None) -> dict:
                 result["items"] = []
                 for key in item_ids:
                     source = book.read(by_id[key]["href"])
-                    root = _xml(source)
+                    root = parse_xml(source)
                     # EPUB XHTML is required here to be UTF-8. Keeping the BOM
                     # if present makes UTF-8 encoding reconstruct the exact bytes.
                     try:
@@ -275,7 +275,7 @@ def _operate(path: Path, item_ids: list[str] | None) -> dict:
                     except UnicodeDecodeError:
                         raise EpubError("EPUB_UNSUPPORTED_ENCODING") from None
                     result["items"].append({
-                        **by_id[key], "paragraphs": _paragraphs(root, key),
+                        **by_id[key], "paragraphs": extract_paragraphs(root, key),
                         "source_xhtml": source_xhtml,
                         "source_encoding": "utf-8",
                         "source_sha256": hashlib.sha256(source).hexdigest(),

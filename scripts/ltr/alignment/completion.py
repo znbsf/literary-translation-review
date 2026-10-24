@@ -66,21 +66,6 @@ def _confidence(value: Any) -> float | None:
     return number if math.isfinite(number) and 0.0 <= number <= 1.0 else None
 
 
-def _count_dialogues(db, edition_id: str, ids: list[str]) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    unique_ids = sorted(set(ids))
-    for offset in range(0, len(unique_ids), 500):
-        chunk = unique_ids[offset:offset + 500]
-        if not chunk:
-            continue
-        placeholders = ','.join('?' for _ in chunk)
-        rows = db.query(
-            f'SELECT id,COUNT(*) AS n FROM dialogues WHERE edition_id=? '
-            f'AND id IN ({placeholders}) GROUP BY id', (edition_id, *chunk))
-        counts.update({str(row['id']): int(row['n']) for row in rows})
-    return counts
-
-
 def _edition_records(db, ids: list[str]) -> dict[str, list[Any]]:
     found: dict[str, list[Any]] = defaultdict(list)
     unique_ids = sorted(set(ids))

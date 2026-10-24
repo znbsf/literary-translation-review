@@ -13,8 +13,8 @@ import re
 import zipfile
 import zlib
 
-from .epub import EpubError, _Book, _paragraphs, _tag, _xml
-from .selected_chapter import _clip
+from .epub import EpubError, EpubBook, extract_paragraphs, xml_tag, parse_xml
+from .selected_chapter import clip_xhtml
 
 MAX_TEXT_BYTES = 64 * 1024 * 1024
 _BLOCKS = {"p", "div", "section", "article", "blockquote", "li", "dt", "dd",
@@ -39,7 +39,7 @@ def _corpus_root(raw):
         if entities:
             repairs.append("standard_nbsp_entity")
     try:
-        return _clip(compatible, "", ""), repairs
+        return clip_xhtml(compatible, "", ""), repairs
     except EpubError as error:
         if str(error) != "EPUB_INVALID_XML":
             raise
@@ -48,11 +48,11 @@ def _corpus_root(raw):
     match = re.match(br'\s*(?:<\?xml\b[^?]*\?>\s*)?(<img\b[^<>]*/>)\s*', compatible)
     if not match:
         raise EpubError("EPUB_INVALID_XML")
-    image = _xml(match.group(1))
-    if _tag(image) != "img" or len(image) or image.text:
+    image = parse_xml(match.group(1))
+    if xml_tag(image) != "img" or len(image) or image.text:
         raise EpubError("EPUB_INVALID_XML")
-    root = _clip(compatible[match.end():], "", "")
-    body = next(node for node in root if _tag(node) == "body")
+    root = clip_xhtml(compatible[match.end():], "", "")
+    body = next(node for node in root if xml_tag(node) == "body")
     body.insert(0, image)
     repairs.append("leading_textless_image_moved_into_body")
     return root, repairs
@@ -65,7 +65,7 @@ def _element_order(root):
         result[path] = len(result)
         counters = {}
         for child in node:
-            tag = _tag(child)
+            tag = xml_tag(child)
             counters[tag] = counters.get(tag, 0) + 1
             visit(child, f"{path}/{tag}[{counters[tag]}]")
 
@@ -78,20 +78,20 @@ def _blank_blocks(root, item, source_hash, existing):
     result = []
 
     def visit(node, path):
-        if _tag(node) in {"script", "style", "head", "ruby", "rt", "rp"}:
+        if xml_tag(node) in {"script", "style", "head", "ruby", "rt", "rp"}:
             return
         text = "".join(node.itertext())
-        if (_tag(node) in _BLOCKS and not text.strip() and path not in existing
-                and not any(_tag(child) in _BLOCKS for child in node.iter() if child is not node)
-                and all(_tag(child) in {"br", "span", "a"} for child in node.iter() if child is not node)):
+        if (xml_tag(node) in _BLOCKS and not text.strip() and path not in existing
+                and not any(xml_tag(child) in _BLOCKS for child in node.iter() if child is not node)
+                and all(xml_tag(child) in {"br", "span", "a"} for child in node.iter() if child is not node)):
             result.append({"id": f'{item["id"]}:layout{len(result) + 1:06d}',
                            "text": text, "kind": "blank_block",
-                           "breaks": sum(_tag(child) == "br" for child in node.iter()),
+                           "breaks": sum(xml_tag(child) == "br" for child in node.iter()),
                            "locator": {"item_id": item["id"], "href": item["href"],
                                        "element_path": path, "source_sha256": source_hash}})
         counters = {}
         for child in node:
-            tag = _tag(child)
+            tag = xml_tag(child)
             counters[tag] = counters.get(tag, 0) + 1
             visit(child, f"{path}/{tag}[{counters[tag]}]")
 
@@ -102,7 +102,7 @@ def _blank_blocks(root, item, source_hash, existing):
 def import_book(path):
     """Read every spine resource, or fail entirely; image-only resources stay recorded."""
     try:
-        book = _Book(Path(path))
+        book = EpubBook(Path(path))
         paragraphs, layout, items = [], [], []
         with book.archive:
             for spine_index, item in enumerate(book.spine):
@@ -110,7 +110,7 @@ def import_book(path):
                 root, repairs = _corpus_root(raw)
                 element_order = _element_order(root)
                 source_hash = hashlib.sha256(raw).hexdigest()
-                rows = _paragraphs(root, item["id"])
+                rows = extract_paragraphs(root, item["id"])
                 for row in rows:
                     row["locator"].update(href=item["href"], spine_index=spine_index,
                                           document_index=element_order[row["locator"]["element_path"]],
@@ -126,7 +126,7 @@ def import_book(path):
                     row["locator"]["spine_index"] = spine_index
                     row["locator"]["document_index"] = element_order[row["locator"]["element_path"]]
                 layout.extend(blanks)
-                images = sum(_tag(node) in {"img", "image", "svg"} for node in root.iter())
+                images = sum(xml_tag(node) in {"img", "image", "svg"} for node in root.iter())
                 items.append({**item, "spine_index": spine_index,
                               "source_xhtml": raw.decode("utf-8"),
                               "source_encoding": "utf-8", "source_sha256": source_hash,

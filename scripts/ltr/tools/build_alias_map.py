@@ -20,6 +20,7 @@ Usage:
 """
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 import unicodedata
@@ -40,13 +41,14 @@ def norm(s: str) -> str:
     return unicodedata.normalize("NFKC", s).replace(" ", "").strip()
 
 
-def main() -> int:
-    run_dir, out = Path(sys.argv[1]), Path(sys.argv[2])
-    force = "--force" in sys.argv
-    tag = "run"
-    for i, a in enumerate(sys.argv):
-        if a == "--tag" and i + 1 < len(sys.argv):
-            tag = sys.argv[i + 1]
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="Propose aliases for human review")
+    parser.add_argument("run_dir", type=Path)
+    parser.add_argument("out", type=Path)
+    parser.add_argument("--tag", default="run")
+    parser.add_argument("--force", action="store_true")
+    args = parser.parse_args(argv)
+    run_dir, out, force, tag = args.run_dir, args.out, args.force, args.tag
     if out.exists() and not force:
         raise SystemExit(f"{out} exists; pass --force to regenerate (a reviewed map is evidence)")
 

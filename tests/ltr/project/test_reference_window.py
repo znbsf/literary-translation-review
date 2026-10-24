@@ -1,12 +1,15 @@
 """Synthetic candidate-edition windows only; never accesses collection files."""
 import hashlib
+import io
+import json
+from contextlib import redirect_stdout
 from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
 import zipfile
 
-from ltr.project.epub import _Book
+from ltr.project.epub import EpubBook
 from ltr.project.reference_window import extract_reference_window, ReferenceWindowError
 from tests.ltr.project.test_epub import CONTAINER, OPF
 
@@ -60,11 +63,11 @@ class ReferenceWindowTests(unittest.TestCase):
 
     def test_epub_opens_only_explicit_spine(self):
         path = self.epub()
-        original, opened = _Book.read, []
+        original, opened = EpubBook.read, []
         def read(book, name):
             opened.append(name)
             return original(book, name)
-        with patch.object(_Book, "read", read):
+        with patch.object(EpubBook, "read", read):
             result = extract_reference_window(path, spine_id="one", start_paragraph=1)
         self.assertNotIn("OPS/two.xhtml", opened)
         self.assertEqual(result["paragraphs"][0]["text"], "合成乙")
@@ -95,6 +98,32 @@ class ReferenceWindowTests(unittest.TestCase):
         with self.assertRaises(ReferenceWindowError) as caught:
             extract_reference_window(self.root / "sensitive-missing.txt", start_line=1)
         self.assertEqual(str(caught.exception), "REFERENCE_INVALID_INPUT")
+
+    def test_unified_cli_saves_private_window_without_echo_or_overwrite(self):
+        from ltr.project.__main__ import main
+
+        source = self.txt()
+        output = self.root / "window.json"
+        args = ["reference-window", str(source), "--output", str(output),
+                "--start-line", "3", "--end-line", "4"]
+        captured = io.StringIO()
+        with redirect_stdout(captured):
+            self.assertEqual(main(args), 0)
+            before = output.read_bytes()
+            self.assertEqual(main(args), 2)
+            self.assertEqual(output.read_bytes(), before)
+        saved = json.loads(before)
+        self.assertEqual([row["text"] for row in saved["paragraphs"]],
+                         ["合成正文甲", "合成正文乙"])
+        self.assertNotIn("合成正文", captured.getvalue())
+        self.assertNotIn(str(self.root), captured.getvalue())
+        repo_output = Path(__file__).resolve().parents[3] / "rejected-window.json"
+        with patch("ltr.project.reference_window.extract_reference_window") as extract:
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["reference-window", str(source),
+                                       "--output", str(repo_output), "--start-line", "3"]), 2)
+            extract.assert_not_called()
+        self.assertFalse(repo_output.exists())
 
 
 if __name__ == "__main__":

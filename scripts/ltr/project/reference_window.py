@@ -9,8 +9,8 @@ from pathlib import Path
 import zipfile
 import zlib
 
-from .epub import EpubError, MAX_ARCHIVE_BYTES, _Book, _paragraphs
-from .selected_chapter import _clip
+from .epub import EpubError, MAX_ARCHIVE_BYTES, EpubBook, extract_paragraphs
+from .selected_chapter import clip_xhtml
 
 
 class ReferenceWindowError(ValueError):
@@ -38,14 +38,14 @@ def extract_reference_window(path, *, spine_id=None, start_paragraph=0,
             if (not isinstance(spine_id, str) or not spine_id or start_line is not None
                     or end_line is not None or type(start_paragraph) is not int or start_paragraph < 0):
                 raise ReferenceWindowError("REFERENCE_EXPLICIT_SPINE_REQUIRED")
-            book = _Book(source)
+            book = EpubBook(source)
             with book.archive:
                 items = [item for item in book.spine if item["id"] == spine_id]
                 if len(items) != 1:
                     raise ReferenceWindowError("REFERENCE_UNKNOWN_SPINE")
                 item = items[0]
                 raw = book.read(item["href"])
-                rows = _paragraphs(_clip(raw, "", ""), spine_id)
+                rows = extract_paragraphs(clip_xhtml(raw, "", ""), spine_id)
                 if start_paragraph >= len(rows):
                     raise ReferenceWindowError("REFERENCE_EMPTY_SELECTION")
                 rows = rows[start_paragraph:]
@@ -110,3 +110,41 @@ def extract_reference_window(path, *, spine_id=None, start_paragraph=0,
     except (OSError, ValueError, LookupError, TypeError, RuntimeError,
             zipfile.BadZipFile, zlib.error, EOFError, RecursionError):
         raise ReferenceWindowError("REFERENCE_INVALID_INPUT") from None
+
+
+def main(argv=None):
+    """Save an explicitly selected private window; print only status and counts."""
+    import argparse
+    import json
+    from .storage import private_root, write_json
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("source", type=Path)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--spine-id")
+    parser.add_argument("--start-paragraph", type=int, default=0)
+    parser.add_argument("--start-line", type=int)
+    parser.add_argument("--end-line", type=int)
+    parser.add_argument("--encoding", default="utf-8-sig")
+    parser.add_argument("--max-characters", type=int, default=10000)
+    args = parser.parse_args(argv)
+    try:
+        output = private_root(args.output)
+        if output.exists():
+            raise ReferenceWindowError("REFERENCE_OUTPUT_EXISTS")
+        result = extract_reference_window(
+            args.source, spine_id=args.spine_id, start_paragraph=args.start_paragraph,
+            start_line=args.start_line, end_line=args.end_line, encoding=args.encoding,
+            max_characters=args.max_characters,
+        )
+        write_json(output, result)
+        print(json.dumps({"status": "window_saved", "paragraphs": len(result["paragraphs"]),
+                          "model_calls": 0}))
+        return 0
+    except Exception:
+        print('{"status":"rejected","code":"reference_window_failed"}')
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
