@@ -12,6 +12,7 @@ python scripts/ltr <命令> --help            # 每个命令的参数
 
 | 步骤 | 命令 | 作用 |
 | --- | --- | --- |
+| 1 建库与检查 | `ltr corpus init <新目录>` / `ltr corpus check <dialogue.sqlite>` | 新建私有空库；只读核对已有库的核心字段、ID、范围、JSON 与引用，只输出计数和摘要 |
 | 1 冻结来源 | `ltr project inspect / locate / import` | 只读解析 EPUB 元数据与导航；按显式 spine 导入，建立稳定段落定位与原始快照 |
 | 3 按证据对齐 | `ltr quotes` → `quotes-review` → `quotes-index` | 无引号版本的引用片段候选、独立复核、只读索引 |
 | | `ltr align` / `align-plan` / `align-campaign` → `align-review` → `align-index` | 对白对齐提议、按冻结证据规划目标、有限连续会话、独立复核、只读索引 |
@@ -27,6 +28,21 @@ python scripts/ltr <命令> --help            # 每个命令的参数
 | | `python scripts/check_manifest.py <manifest.json>` | 核对申报的覆盖、改后复查与执行记录 |
 
 尚未实现（规划）：词表锁定命令、八维理解台账命令、跨版本证据查询命令、source-first 上下文生成与候选冻结命令。在实现前按 [evidence-and-corpus.md](evidence-and-corpus.md) 手工记录，不要声称运行过它们。
+
+## 建库与只读检查
+
+运行命令（目录的父目录须已存在）：
+
+~~~sh
+python scripts/ltr corpus init <新的私有目录>
+python scripts/ltr corpus check <已有目录/dialogue.sqlite>
+~~~
+
+初始化拒绝已有目录、Git 工作区及符号链接/联接点，创建带约束的五张核心表与 schema 元数据。不写入现有正式库，不导入书稿；项目绑定与迁移仍为规划。
+
+检查只读打开数据库，执行 SQLite quick_check、必需表/字段、ID/序号唯一性、段落范围端点、JSON 和对齐引用检查。检查前后完整计算 SHA-256；存在 WAL/SHM/journal 或路径链接时拒绝。输出不含正文、记录 ID、私有路径或原始 SQLite 错误。退出码：0 通过，1 结构/数据检查失败，2 参数或环境拒绝。
+
+没有 schema 标记的旧库按相同数据规则检查，并给出 schema_version_missing 警告，不补写版本。未知标记拒绝；附加表/字段保留。检查不证明任意旧库具备新库的所有写入约束，也不核验对齐语义、模型候选资格、来源真实性或文学质量。正式库中的 candidate / model_matched / exact_source_id 不能仅因存储位置升级为已核证据。
 
 ## 查看器配置
 
