@@ -59,6 +59,19 @@ CREATE TABLE metadata(key TEXT PRIMARY KEY, value_json TEXT);
 
 字段名沿用早期日中项目（`chinese_id`/`japanese_ids_json`）；其他语言对照样使用，含义是“目标语一侧 / 原文一侧”。
 
+## 初始化与格式兼容
+
+上面的 SQL 表达字段约定；实际初始化命令是：
+
+~~~sh
+python scripts/ltr corpus init <新的私有目录>
+python scripts/ltr corpus check <dialogue.sqlite>
+~~~
+
+新库用 metadata 的 schema 键保存 JSON 字符串 "ltr-corpus-v1"。初始化为 ID 非空、段落/对白序号与范围、JSON 格式添加 CHECK/UNIQUE 约束，并声明版本与范围端点的外键；写入者仍须开启 PRAGMA foreign_keys=ON，对齐数组中的每个 ID 由检查器验证。没有该元数据的旧库只读兼容并报告警告；不会将验证动作变成迁移。附加字段与表允许存在。
+
+检查核验当前核心数据与字段，不推断记录的人工或语义资格；已在 alignments 中的机器记录仍保留其候选状态。缺失或无效数据报告代码与计数，不输出正文、定位 ID 或私有路径。
+
 ## 可选表
 
 | 表 | 用途 |
