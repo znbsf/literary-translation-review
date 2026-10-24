@@ -7,8 +7,9 @@ import * as scans from "./scans.js";
 import * as reviews from "./reviews.js";
 
 import * as evidence from "./evidence.js";
+import * as glossary from "./glossary.js";
 
-const VIEWS = { overview, dialogues, scans, reviews, evidence };
+const VIEWS = { overview, dialogues, scans, reviews, evidence, glossary };
 const THEMES = ["auto", "light", "dark"];
 const THEME_LABELS = { auto: "主题：跟随系统", light: "主题：浅色", dark: "主题：深色" };
 

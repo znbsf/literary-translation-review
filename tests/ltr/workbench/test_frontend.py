@@ -61,3 +61,14 @@ class FrontendTests(WorkbenchTestCase):
         for path in STATIC_ROOT.rglob("*.js"):
             with self.subTest(path=path.name):
                 self.assertNotRegex(path.read_text(encoding="utf-8"), r"\.(innerHTML|outerHTML)\s*=|insertAdjacentHTML")
+
+    def test_glossary_navigation_and_readonly_view(self):
+        response, page = self.get("/")
+        self.assertIn(b'data-view="glossary"', page)
+        response, script = self.get("/js/glossary.js")
+        self.assertEqual(response.status, 200)
+        self.assertIn(b'"/api/glossary"', script)
+        self.assertIn(b"if (!data.available)", script)
+        self.assertIn(b"notice(data.message)", script)
+        self.assertIn(b"glossary", self.get("/js/app.js")[1])
+        self.assertNotRegex(script.decode(), r"method:\s*[\"'](?:POST|PUT|PATCH|DELETE)")

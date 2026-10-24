@@ -15,6 +15,7 @@ python scripts/ltr <命令> --help            # 每个命令的参数
 | 1 建库与检查 | `ltr corpus init <新目录>` / `ltr corpus check <dialogue.sqlite>` | 新建私有空库；只读核对已有库的核心字段、ID、范围、JSON 与引用，只输出计数和摘要 |
 | 1 项目绑定 | `ltr project import --corpus / bind / migrate / recover` | 新工作库导入、已有库精确只读绑定、旧项目迁移与中断恢复 |
 | 1 冻结来源 | `ltr project inspect / locate / import` | 只读解析 EPUB 元数据与导航；按显式 spine 导入，建立稳定段落定位与原始快照 |
+| 1 固定表达 | `ltr glossary init / propose / add / confirm / supersede / reject / lock / export / list` | 库外提案、人工裁定、不可变版本快照与共享 |
 | 3 查询证据 | `ltr evidence line / speaker / term` | 跨版本、人物与字面词条查询；已核/候选/线索分级，不写库 |
 | 3 按证据对齐 | `ltr quotes` → `quotes-review` → `quotes-index` | 无引号版本的引用片段候选、独立复核、只读索引 |
 | | `ltr align` / `align-plan` / `align-campaign` → `align-review` → `align-index` | 对白对齐提议、按冻结证据规划目标、有限连续会话、独立复核、只读索引 |
@@ -26,10 +27,11 @@ python scripts/ltr <命令> --help            # 每个命令的参数
 | 4 生成与审校 | `ltr project check-context` | 校验上下文卡：证据来源、偏移与知情终点 |
 | | `ltr project render / apply` | 生成原文-译文对照审校页；导入人工修改并保留历史版本 |
 | 5 改后复查 | `ltr workbench --config <cfg> --port 0` | 本机查看器：概览、对白（上下文与全部机器意见）、扫描页叠框、复核标签与导出 |
+| | `ltr glossary check --version <版本> --project <P>` | 按源段/译段绑定核对固定表达，只报告待复核问题 |
 | 6 交付 | `ltr assemble` | 按最终正文组装 TXT/EPUB |
 | | `python scripts/check_manifest.py <manifest.json>` | 核对申报的覆盖、改后复查与执行记录 |
 
-尚未实现（规划）：词表锁定命令、八维理解台账命令、source-first 上下文生成与候选冻结命令。在实现前按 [evidence-and-corpus.md](evidence-and-corpus.md) 手工记录，不要声称运行过它们。
+尚未实现（规划）：八维理解台账命令、source-first 上下文生成与候选冻结命令。在实现前按 [evidence-and-corpus.md](evidence-and-corpus.md) 手工记录，不要声称运行过它们。
 
 ## 建库与只读检查
 
@@ -124,6 +126,39 @@ python scripts/ltr evidence term --config <cfg.json> --corpus <id> --text <liter
 
 完整正文须显式 --with-text；每条最多显示 100000 字，仍超出时保留 text_truncated 和原长度。默认只写终端，不写请求或正文日志。--output <new.json> 仅允许新文件，必须在 Git 和所有语料目录之外；源库、现有文件和不安全路径均拒绝。工程验证只记录计数、摘要和错误码，真实正文留在本机内存或显式私有输出。
 
+## 固定表达词表
+
+所有命令都必须带 `--store <glossary.sqlite>`。父目录须已存在，存储必须在 Git 工作区及所有语料目录外；拒绝符号链接、联接点、硬链接和未完成的 SQLite 日志。无配置的命令按祖先目录中的 .git / dialogue.sqlite 检查；propose 另核对配置中全部语料根并记入私有 meta，后续访问继续检查这些根。工具不扫描磁盘寻找未声明的任意语料目录，使用者仍须将词表放在明确的独立私有目录。
+
+~~~sh
+python scripts/ltr glossary init --store <S>
+python scripts/ltr glossary propose --store <S> --config <cfg.json> --corpus <id> --book <book-key> --limit 100 --min-count 2
+python scripts/ltr glossary propose --store <S> --config <cfg.json> --corpus <id> --from-json <既有词表.json>
+python scripts/ltr glossary add --store <S> --source <原文写法> --target <工作译法> --kind <类型> --conditions <适用条件>
+python scripts/ltr glossary confirm --store <S> --id <条目ID> --target <确认译法> --note <理由>
+python scripts/ltr glossary supersede --store <S> --id <旧ID> --by <新ID> --note <推翻理由>
+python scripts/ltr glossary reject --store <S> --id <条目ID> --note <拒绝理由>
+python scripts/ltr glossary lock --store <S> --version v1 --note <范围说明>
+python scripts/ltr glossary export --store <S> --version v1 --format json
+python scripts/ltr glossary export --store <S> --version v1 --format md
+python scripts/ltr glossary list --store <S> --status proposed
+python scripts/ltr glossary list --store <S> --version v1
+python scripts/ltr glossary check --store <S> --version v1 --project <P>
+python scripts/ltr glossary check --store <S> --version v1 --pairs <pairs.json>
+~~~
+
+- init 拒绝已有文件；add 的 target、conditions 可省略，但始终新增提案。propose 只读原文版本（japanese_source/source_epub/source_text），排除历史译本与当前生成稿；有源快照配置时沿用其绑定校验。按完整段落提取『』【】〈〉《》内 1–80 字片段和至少出现两次的连续片假名（2–40 字）/汉字（2–20 字）短语。逐条记录实际出处与次数，已有 source_form 不重复，limit 只限制新提案数（1–10000）。这不是分词或专名识别，跨段拆开的表达及其他语言需要人工 add。
+- `--from-json` 接受条目数组，或含 entries 数组的导出对象；字段为 source_form、可选 target_form/kind/conditions、variants_json/sources_json（也接受 variants/sources 数组）。导入状态、ID、裁定被忽略，只生成 proposed，出现次数未知时记 0。括号、重复和导入都不授予确认资格。
+- confirm 必须有非空 target。已确认条目不能直接改译法；新建同源提案并确认后，用 supersede 保留旧译与理由。替代项必须已确认，禁止自指与循环；reject 同样要求理由。终止条目不重新确认。
+- lock 保存当前全部 confirmed 的完整快照及当时的旧裁定历史；空确认集、重复版本拒绝。工作台会列出同源多个 confirmed 冲突，锁定本身不代替语境裁定。后续编辑不改变旧版本内容、导出、摘要或核对依据。export 只能读取锁定版本，JSON/Markdown 输出到终端；真实内容的重定向目标也应在私有目录。
+- JSON 导出的 confirmed_glossary 可直接填入 manifest，默认 complete_for_scope=false，必须由人确认范围完整性后设为 true。`check_manifest.py` 核验申报，不能据此证明原文覆盖或文学准确。
+- pairs.json 为 `[{"source":"自编原文","target":"自编译文","locator":"p1"}]`。project 使用项目实际段落 ID 绑定译文；v2 原文从绑定工作库读取并核对摘要，不按数组位置猜配。旧 v1 项目保留其已有源译绑定。check/list/export 不创建或修改文件。
+- check 检查绑定段落内源词出现而确认译法（或显式允许变体）缺失、被推翻旧译残留，以及同源词出现多个已知译法；多译法仅匹配词表已知项，不从整段译文推断未知译名。没有 source（或为 null）的行只报译文字符串线索，并明确“未完成源词覆盖检查”；混合输入也不会宣称全范围覆盖完成。
+- ordinary/common/unclassified/普通词/普通同形词/普通引用/未分类，以及有 conditions 的条目，仅报 clue；工具不执行自然语言条件，也不自动把普通同形词判成专名。其他 finding 也只是字面异常，requires_review=true，不证明语义误译。子串重叠、重复次数、拆分表达与文学变奏仍须人工核查；不执行替换。
+- 工作台新增只读“词表”页，`GET /api/glossary?corpus=<id>[&version=<版本>]` 返回版本列表、所选确认快照、当前提案和冲突/替代链；默认选最近锁定版本。未配置时显示说明，工作台没有词表写入接口。
+
+退出码：0 表示命令完成（check 有待复核问题也返回 0），2 表示参数/存储/来源拒绝。错误只返回静态代码，不回显输入、路径或正文。所有词表命令零模型调用、零网络调用。
+
 ## 查看器配置
 
 把配置文件放在书稿与仓库之外：
@@ -135,6 +170,7 @@ python scripts/ltr evidence term --config <cfg.json> --corpus <id> --text <liter
     "candidate_index": "…/quote-index.sqlite",
     "alignment_index": "…/alignment-index.sqlite",
     "attribution_index": "…/attribution-index.sqlite",
+    "glossary": "…/glossary.sqlite",
     "ocr_vision_candidates": "…/vision-run/",
     "ocr_reading_order_candidates": "…/reading-order/",
     "ocr_regions": "…/regions.sqlite",

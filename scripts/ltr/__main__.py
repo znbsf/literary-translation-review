@@ -17,6 +17,7 @@ COMMANDS = {
     "project": ("ltr.project", "EPUB preparation, corpus binding, review and explicitly authorized private workflows"),
     "assemble": ("ltr.project.batch_assemble", "assemble reviewed batches into TXT/EPUB"),
     "corpus": ("ltr.library.corpus", "initialize a private corpus or check an existing database read-only"),
+    "glossary": ("ltr.library.glossary", "private wording proposals, human decisions, locked snapshots and read-only checks"),
     "evidence": ("ltr.library.evidence", "read-only line, speaker and term evidence with provenance levels"),
     "tools": ("ltr.tools", "maintenance tools: alias maps, manifest, basis detection, identity merge, guarded writes, leak scan"),
     # step 3 — evidence candidates

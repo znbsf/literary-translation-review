@@ -245,6 +245,8 @@ class WorkbenchHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, store.dialogues(params))
         elif path == "/api/evidence":
             self._send_json(HTTPStatus.OK, store.evidence(params))
+        elif path == "/api/glossary":
+            self._send_json(HTTPStatus.OK, store.glossary(params))
         elif path == "/api/dialogue":
             self._send_json(HTTPStatus.OK, store.dialogue(params))
         elif path == "/api/ocr-reading-order-candidates":
