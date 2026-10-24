@@ -1,23 +1,44 @@
 # Literary Translation Review
 
-A Codex skill for source-grounded, book-length literary translation review and source-first retranslation, with complete-book understanding, character dialogue evidence, cross-volume wording consistency, annotated EPUB editions, and transparent critical commentary.
+An agent skill (Codex, Claude Code, and other tools that read `SKILL.md`) for source-grounded, book-length literary translation review and source-first retranslation, with complete-book understanding, a source-bound evidence corpus, character dialogue evidence, cross-volume wording consistency, annotated EPUB editions, and transparent critical commentary.
 
 这是一套可复用审校流程，不是全自动翻译软件，也不附带小说全文、私有语料库、模型账号或API服务。模型和供应商可配置；没有对特定模型的文学质量作保证。
 
 ## 使用
 
-将本仓库复制到 Codex 的技能目录下，文件夹名为 `literary-translation-review`。在任务中使用 `$literary-translation-review`，并提供合法可用的原文、现有译稿、历史参考、期望交付范围及成本约束。
+把本仓库放到所用工具的技能目录，文件夹名为 `literary-translation-review`：
 
-入口为 [SKILL.md](SKILL.md)。详细资料规范和读者版结构在 `references/`，可填写模板在 `assets/`。不要将私有书稿提交到此仓库。
+| 工具 | 目录 | 调用 |
+| --- | --- | --- |
+| Codex | `~/.codex/skills/` | 任务中写 `$literary-translation-review` |
+| Claude Code | `~/.claude/skills/`（或项目内 `.claude/skills/`） | 描述匹配时自动加载，也可直接点名本 skill |
 
-## 无需模型的示例检查
+其他读取 `SKILL.md` 的工具按其技能目录放置即可。使用时提供合法可用的原文、现有译稿、历史参考、期望交付范围及成本约束。
 
-需要 Python 3.10 或更新版本，无第三方依赖：
+| 位置 | 内容 |
+| --- | --- |
+| [SKILL.md](SKILL.md) | 入口：流程与文学判断 |
+| `references/` | 资料与对白规范、[证据库结构](references/data-model.md)、[工具包](references/toolkit.md)、读者版格式 |
+| `assets/` | 制作说明模板、审校清单示例 |
+| `scripts/ltr/` | 工具包：EPUB 项目、证据库候选（对齐/归属/引号/OCR）、模型运行器、本机查看器、交付组装 |
+| `scripts/check_manifest.py` | 审校清单校验器 |
+| `tests/` | 全部使用合成数据 |
+
+不要将私有书稿、语料库或本机路径提交到此仓库。
+
+## 工具包与检查
+
+需要 Python 3.11 或更新版本；仅读取扫描图时另需 Pillow。
 
 ```sh
+python scripts/ltr --help                                   # 全部命令
+python scripts/ltr project demo --project <新的私有目录>      # 合成示例，零模型调用
+python scripts/ltr workbench --config <本机配置.json> --port 0   # 本机查看器
 python scripts/check_manifest.py assets/review-manifest.example.json
-python -m unittest discover -s tests -v
+python -m unittest discover -s tests -t .
 ```
+
+命令与配置见 [references/toolkit.md](references/toolkit.md)。
 
 校验器检查申报的段落、注释与改后复查覆盖关系，不读取小说正文，也不证明语义、文风或设备适配正确。真实工程还需源文件绑定、实际读回和文学审校。
 
