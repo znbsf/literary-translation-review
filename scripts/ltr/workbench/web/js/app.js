@@ -6,7 +6,9 @@ import * as dialogues from "./dialogues.js";
 import * as scans from "./scans.js";
 import * as reviews from "./reviews.js";
 
-const VIEWS = { overview, dialogues, scans, reviews };
+import * as evidence from "./evidence.js";
+
+const VIEWS = { overview, dialogues, scans, reviews, evidence };
 const THEMES = ["auto", "light", "dark"];
 const THEME_LABELS = { auto: "主题：跟随系统", light: "主题：浅色", dark: "主题：深色" };
 

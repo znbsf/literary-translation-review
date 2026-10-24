@@ -55,6 +55,10 @@ class WorkbenchStore(OcrViews):
             overlay = CandidateOverlay(view, corpus_id)
         return _EvidenceOverlay(overlay)
 
+    def evidence(self, params):
+        from ltr.library.evidence import query_evidence
+        return query_evidence(self, params)
+
     def completion_alignment(self, corpus_id):
         from ltr.alignment.completion import CompletionAlignmentView
         return CompletionAlignmentView(self, corpus_id)

@@ -15,6 +15,7 @@ python scripts/ltr <命令> --help            # 每个命令的参数
 | 1 建库与检查 | `ltr corpus init <新目录>` / `ltr corpus check <dialogue.sqlite>` | 新建私有空库；只读核对已有库的核心字段、ID、范围、JSON 与引用，只输出计数和摘要 |
 | 1 项目绑定 | `ltr project import --corpus / bind / migrate / recover` | 新工作库导入、已有库精确只读绑定、旧项目迁移与中断恢复 |
 | 1 冻结来源 | `ltr project inspect / locate / import` | 只读解析 EPUB 元数据与导航；按显式 spine 导入，建立稳定段落定位与原始快照 |
+| 3 查询证据 | `ltr evidence line / speaker / term` | 跨版本、人物与字面词条查询；已核/候选/线索分级，不写库 |
 | 3 按证据对齐 | `ltr quotes` → `quotes-review` → `quotes-index` | 无引号版本的引用片段候选、独立复核、只读索引 |
 | | `ltr align` / `align-plan` / `align-campaign` → `align-review` → `align-index` | 对白对齐提议、按冻结证据规划目标、有限连续会话、独立复核、只读索引 |
 | | `ltr attribute` → `attribute-index` / `attribute-projection` | 说话人/听者建议（证据片段必须是原文唯一子串）及严格投影 |
@@ -28,7 +29,7 @@ python scripts/ltr <命令> --help            # 每个命令的参数
 | 6 交付 | `ltr assemble` | 按最终正文组装 TXT/EPUB |
 | | `python scripts/check_manifest.py <manifest.json>` | 核对申报的覆盖、改后复查与执行记录 |
 
-尚未实现（规划）：词表锁定命令、八维理解台账命令、跨版本证据查询命令、source-first 上下文生成与候选冻结命令。在实现前按 [evidence-and-corpus.md](evidence-and-corpus.md) 手工记录，不要声称运行过它们。
+尚未实现（规划）：词表锁定命令、八维理解台账命令、source-first 上下文生成与候选冻结命令。在实现前按 [evidence-and-corpus.md](evidence-and-corpus.md) 手工记录，不要声称运行过它们。
 
 ## 建库与只读检查
 
@@ -65,6 +66,37 @@ python scripts/ltr project recover --project <P>
 - pending 存在时阻止其他编辑；恢复时核对旧项目摘要/已发布的新项目、来源和快照，冲突拒绝。项目已继续编辑后，旧发布回执不能用来倒填恢复。
 
 回执、原始 XHTML 快照、项目、工作库及未完成暂存都属于私有书稿材料，须放在 Git 外。结构和绑定通过不等于阅读覆盖或文学验收。
+
+## 证据查询
+
+~~~sh
+python scripts/ltr evidence line --config <cfg.json> --corpus <id> --dialogue <dialogue-id>
+python scripts/ltr evidence speaker --config <cfg.json> --corpus <id> --name <name> --book <book-key> --addressee <recipient>
+python scripts/ltr evidence term --config <cfg.json> --corpus <id> --text <literal> --lang ja
+~~~
+
+三类命令与工作台 GET /api/evidence 共用同一个只读查询函数：
+
+- line 支持原对白、alignment: / identity: / candidate: 详情 ID、反向检索和一对多关系；各旧译保持独立，不做多数票。
+- speaker 可按作品和对象筛选。别名来自同一来源中的 surface/canonical 记录，仅作为搜索键；排除当前稿及作品范围外的别名。人物索引会按既有验证器重校验，冲突观察不合并成确定身份。
+- term 使用字面子串检索，百分号和下划线也按字面处理。每个命中始终为 clue，相关对白的独立对应关系另列在 correspondences 中，不能因同段出现就当成对应。
+- 工作台新增“证据”视图，提供三种查询、筛选和分页；对白详情新增惰性加载的“证据”页签，可以跳到该人物的其他台词。
+
+每条关系都有 level：
+
+| level | 展示 | 要求 |
+| --- | --- | --- |
+| verified | 已核 | 正式关系的字段或 evidence_json.qualification 中 human_confirmed、semantic_verified、reference_eligible 均为整数/布尔真，且 requires_review 未标为待复核；错误类型或缺失资格不升级 |
+| candidate | 候选 | 正式库中尚未具备上述资格的记录，或库外对齐/归属建议；独立复核的保留、拒绝、不确定意见分别保留，均不升级 |
+| clue | 检索线索 | 全文子串命中；即便另列已核关系，命中本身仍保持 clue |
+
+不以表的位置、matched 字样、置信分数或模型一致判定已核。未知 origin_kind 与 generated_draft 等当前稿不参与查询；原文、历史译本和明确的来源类型按白名单准入。查询不授予任何资格。
+
+返回版本标题、人物归属状态、(edition_id, paragraph_id)、段落 SHA-256 和半开字符偏移。无法唯一定位时显式标为 paragraph_range；超过 100 段时只返回首尾定位与 endpoint_range，字符偏移为 null，不伪造精确匹配。来源库和正式库摘要分别记录；已有源快照/索引的摘要和逐条来源绑定照旧校验，异常拒绝，不静默降级为“查无结果”。
+
+默认短摘 160 字，可用 --excerpt-chars 设置 0–400；默认每页 20 条，--limit 为 1–100，--offset 不超过 10000。line 单一起点最多处理 1000 条关系，超限拒绝。term 每个命中最多附五条关系，另报可能截断，完整关系可进入对白继续查询。
+
+完整正文须显式 --with-text；每条最多显示 100000 字，仍超出时保留 text_truncated 和原长度。默认只写终端，不写请求或正文日志。--output <new.json> 仅允许新文件，必须在 Git 和所有语料目录之外；源库、现有文件和不安全路径均拒绝。工程验证只记录计数、摘要和错误码，真实正文留在本机内存或显式私有输出。
 
 ## 查看器配置
 

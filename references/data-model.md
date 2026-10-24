@@ -80,6 +80,12 @@ python scripts/ltr corpus check <dialogue.sqlite>
 
 新版库的对白序号仍受非负整数约束。未标版本的旧库允许经过证据验证的 ASCII 引号补录排序键：在整数 base 后插入 n 条时为 base + k/(n+1)，也可在首条 0 前插入。兼容检查核对补录类型、原文跨度、整组公式、顺序和整数锚点，另报数量警告；不改变存量数值，不赋予任何语义或人工资格。通用未知小数仍是检查失败。
 
+## 查询结果的资格
+
+ltr evidence 的返回为 ltr-evidence-v1：来源与正式库分别记录摘要，每条关系标 verified/candidate/clue，逐段携带位置和文本摘要。资格只来自显式人工、语义和参考标记，不根据 alignments 的存放位置或状态字符串推断；库外建议始终是 candidate，全文命中始终是 clue。
+
+精确定位使用半开区间 [start,end)；重复或归一化后无法唯一定位时保留段落范围，长跨度保留首尾定位且偏移为 null。未知值不由程序补齐。完整查询参数和输出限制见 [toolkit.md](toolkit.md#证据查询)。
+
 ## 可选表
 
 | 表 | 用途 |
