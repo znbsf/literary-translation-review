@@ -5,6 +5,7 @@ import argparse
 from contextlib import closing
 import hashlib
 import json
+import math
 from pathlib import Path
 import sqlite3
 import stat
@@ -120,7 +121,6 @@ def check_corpus(path: Path) -> dict:
                 issues.append({"code": "missing_column", "table": table, "column": column})
             counts[table] = con.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
         if not issues:
-            _check_rows(con, issues)
             row = con.execute("SELECT value_json FROM metadata WHERE key='schema'").fetchone()
             if row is None:
                 warnings.append({"code": "schema_version_missing"})
@@ -131,6 +131,10 @@ def check_corpus(path: Path) -> dict:
                     version = None
                 if version != SCHEMA:
                     issues.append({"code": "schema_version_unsupported"})
+            legacy = _legacy_fractional_ordinals(con) if row is None else set()
+            if legacy:
+                warnings.append({"code": "legacy_fractional_dialogue_ordinals", "count": len(legacy)})
+            _check_rows(con, issues, legacy)
         con.rollback()
     _stable_path(path)
     after = _sha256(path)
@@ -144,7 +148,79 @@ def check_corpus(path: Path) -> dict:
             "source_sha256": before, "source_unchanged": unchanged, "model_calls": 0}
 
 
-def _check_rows(con: sqlite3.Connection, issues: list) -> None:
+def _legacy_fractional_ordinals(con: sqlite3.Connection) -> set[str]:
+    """Recognize evidenced ASCII-quote insertions in unversioned legacy data.
+
+    This is an ordering compatibility rule, never a semantic qualification.
+    Every member of a slot must follow base + k/(n+1) in source-span order.
+    """
+    groups = {}
+    rows = con.execute("""SELECT id,edition_id,ordinal,start_para,end_para,evidence_json,text
+                          FROM dialogues WHERE typeof(ordinal)='real'""")
+    for row in rows:
+        value = row[2]
+        if not math.isfinite(value) or value.is_integer():
+            continue
+        groups.setdefault((row[1], math.floor(value)), []).append(row)
+    allowed = set()
+    for (edition, base), members in groups.items():
+        try:
+            members.sort(key=lambda r: r[2])
+            spans = []
+            for row in members:
+                evidence = json.loads(row[5])
+                span = evidence["source_span"]
+                if evidence["supplement_kind"] != "ascii_quotes":
+                    raise ValueError
+                position = tuple(span[k] for k in ("start_para", "start", "end_para", "end"))
+                if (any(type(v) is not int or v < 0 for v in position)
+                        or (position[0], position[2]) != (row[3], row[4])
+                        or (position[0], position[1]) >= (position[2], position[3])):
+                    raise ValueError
+                paragraphs = con.execute("""SELECT ordinal,text FROM paragraphs
+                    WHERE edition_id=? AND ordinal BETWEEN ? AND ? ORDER BY ordinal""",
+                    (edition, position[0], position[2])).fetchall()
+                if not paragraphs or paragraphs[0][0] != position[0] or paragraphs[-1][0] != position[2]:
+                    raise ValueError
+                prefix, n = con.execute("""SELECT COALESCE(SUM(length(text)),0),COUNT(*)
+                    FROM paragraphs WHERE edition_id=? AND ordinal<?""",
+                    (edition, position[0])).fetchone()
+                segment = "\n".join(p[1] for p in paragraphs)
+                # Legacy source_span uses absolute offsets into newline-joined
+                # edition text. Also admit explicitly matching paragraph-local
+                # spans. Bounds alone never establish the coordinate basis.
+                local_end_base = sum(len(p[1]) + 1 for p in paragraphs[:-1])
+                candidates = ((position[1], local_end_base + position[3]),
+                              (position[1] - prefix - n, position[3] - prefix - n))
+                if not any(0 <= start < end <= len(segment) and segment[start:end] == row[6]
+                           for start, end in candidates):
+                    raise ValueError
+                spans.append(position)
+            if spans != sorted(spans) or len(spans) != len(set(spans)):
+                continue
+            if not all(math.isclose(row[2], base + k / (len(members) + 1),
+                                    rel_tol=0, abs_tol=1e-10)
+                       for k, row in enumerate(members, 1)):
+                continue
+            lower = con.execute("""SELECT end_para FROM dialogues
+                WHERE edition_id=? AND typeof(ordinal)='integer' AND ordinal=?""",
+                                (edition, base)).fetchone()
+            upper = con.execute("""SELECT start_para FROM dialogues
+                WHERE edition_id=? AND typeof(ordinal)='integer' AND ordinal=?""",
+                                (edition, base + 1)).fetchone()
+            if lower is None and not (base == -1 and upper is not None):
+                continue
+            if lower is not None and spans[0][0] < lower[0]:
+                continue
+            if upper is not None and spans[-1][2] > upper[0]:
+                continue
+            allowed.update(row[0] for row in members)
+        except (ValueError, KeyError, TypeError, IndexError):
+            continue
+    return allowed
+
+
+def _check_rows(con: sqlite3.Connection, issues: list, legacy: set[str]) -> None:
     def count(code: str, query: str) -> int:
         value = con.execute(query).fetchone()[0]
         if value:
@@ -161,8 +237,11 @@ def _check_rows(con: sqlite3.Connection, issues: list) -> None:
         count(f"{table}_duplicate_id",
               f'SELECT COUNT(*) FROM (SELECT 1 FROM "{table}" GROUP BY {key_sql} HAVING COUNT(*)>1)')
     for table in ("paragraphs", "dialogues"):
-        count(f"{table}_invalid_ordinal",
-              f'SELECT COUNT(*) FROM "{table}" WHERE typeof(ordinal)!=\'integer\' OR ordinal<0')
+        invalid = con.execute(
+            f'SELECT COUNT(*) FROM "{table}" WHERE typeof(ordinal)!=\'integer\' OR ordinal<0').fetchone()[0]
+        invalid -= len(legacy) if table == "dialogues" else 0
+        if invalid:
+            issues.append({"code": f"{table}_invalid_ordinal", "count": invalid})
         count(f"{table}_duplicate_ordinal",
               f'SELECT COUNT(*) FROM (SELECT 1 FROM "{table}" GROUP BY edition_id,ordinal HAVING COUNT(*)>1)')
         count(f"{table}_invalid_text",

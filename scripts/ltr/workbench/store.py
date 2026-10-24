@@ -15,7 +15,7 @@ from ltr.ocr import vision_index as ocr_vision_index
 from ltr.library import publisher_identifiers
 from ltr.library import run_snapshot
 from .common import WorkbenchError, SCHEMA_ID, REVIEW_EXPORT_SCHEMA, DEFAULT_LIMIT, MAX_LIMIT, MAX_OFFSET, MAX_QUERY_CHARS, MAX_FILTER_CHARS, MAX_ID_CHARS, MAX_NOTE_CHARS, MAX_SPEAKER_CHARS, MAX_CONTEXT_PARAGRAPH_CHARS, MAX_DIALOGUE_TEXT_CHARS, CONTEXT_WINDOW, ALLOWED_VERDICTS
-from .common import (_as_bool, _as_int, _bounded_int, _clamp, _clean_text, _contained, _id_list,
+from .common import (_dialogue_ordinal, _as_bool, _as_int, _bounded_int, _clamp, _clean_text, _contained, _id_list,
                      _image_content_type, _json_loads, _like_pattern, _resolved_scan_path,
                      _utc_now, _validate_id, _validate_query_text, _ID_RE)
 from .config import CorpusConfig, WorkbenchConfig
@@ -243,7 +243,7 @@ class WorkbenchStore(OcrViews):
             "edition_id": _clean_text(row["edition_id"]),
             "edition_title": _clamp(row["edition_title"], 200),
             "language": _clamp(row["language"], 40),
-            "ordinal": _as_int(row["ordinal"]),
+            "ordinal": _dialogue_ordinal(row["ordinal"]),
             "text": _clamp(row["text"], MAX_DIALOGUE_TEXT_CHARS),
             "text_truncated":len(row['text'] or '')>MAX_DIALOGUE_TEXT_CHARS,
             "text_total_chars":len(row['text'] or ''),
@@ -830,7 +830,7 @@ class WorkbenchStore(OcrViews):
                             "text": _clamp(item["text"], MAX_CONTEXT_PARAGRAPH_CHARS)
                             if item is not None
                             else "",
-                            "ordinal": _as_int(item["ordinal"]) if item is not None else 0,
+                            "ordinal": _dialogue_ordinal(item["ordinal"]) if item is not None else 0,
                         }
                     )
         confidence = alignment.get("confidence")

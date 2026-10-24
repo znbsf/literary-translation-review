@@ -13,6 +13,7 @@ python scripts/ltr <命令> --help            # 每个命令的参数
 | 步骤 | 命令 | 作用 |
 | --- | --- | --- |
 | 1 建库与检查 | `ltr corpus init <新目录>` / `ltr corpus check <dialogue.sqlite>` | 新建私有空库；只读核对已有库的核心字段、ID、范围、JSON 与引用，只输出计数和摘要 |
+| 1 项目绑定 | `ltr project import --corpus / bind / migrate / recover` | 新工作库导入、已有库精确只读绑定、旧项目迁移与中断恢复 |
 | 1 冻结来源 | `ltr project inspect / locate / import` | 只读解析 EPUB 元数据与导航；按显式 spine 导入，建立稳定段落定位与原始快照 |
 | 3 按证据对齐 | `ltr quotes` → `quotes-review` → `quotes-index` | 无引号版本的引用片段候选、独立复核、只读索引 |
 | | `ltr align` / `align-plan` / `align-campaign` → `align-review` → `align-index` | 对白对齐提议、按冻结证据规划目标、有限连续会话、独立复核、只读索引 |
@@ -38,11 +39,32 @@ python scripts/ltr corpus init <新的私有目录>
 python scripts/ltr corpus check <已有目录/dialogue.sqlite>
 ~~~
 
-初始化拒绝已有目录、Git 工作区及符号链接/联接点，创建带约束的五张核心表与 schema 元数据。不写入现有正式库，不导入书稿；项目绑定与迁移仍为规划。
+初始化拒绝已有目录、Git 工作区及符号链接/联接点，创建带约束的五张核心表与 schema 元数据。不写入现有正式库；书稿导入与迁移使用下节的显式项目命令。
 
 检查只读打开数据库，执行 SQLite quick_check、必需表/字段、ID/序号唯一性、段落范围端点、JSON 和对齐引用检查。检查前后完整计算 SHA-256；存在 WAL/SHM/journal 或路径链接时拒绝。输出不含正文、记录 ID、私有路径或原始 SQLite 错误。退出码：0 通过，1 结构/数据检查失败，2 参数或环境拒绝。
 
-没有 schema 标记的旧库按相同数据规则检查，并给出 schema_version_missing 警告，不补写版本。未知标记拒绝；附加表/字段保留。检查不证明任意旧库具备新库的所有写入约束，也不核验对齐语义、模型候选资格、来源真实性或文学质量。正式库中的 candidate / model_matched / exact_source_id 不能仅因存储位置升级为已核证据。
+没有 schema 标记的旧库按核心数据规则检查，并给出 schema_version_missing 警告，不补写版本。旧库 ASCII 引号补录若具有完整来源跨度，且每组严格符合 base + k/(n+1) 的插入次序，可保留有限小数排序键并报告 legacy_fractional_dialogue_ordinals；未知来源、损坏槽位和新版库的小数仍拒绝。工作台保持实际数值，不作取整。未知标记拒绝；附加表/字段保留。检查不证明任意旧库具备新库的所有写入约束，也不核验对齐语义、模型候选资格、来源真实性或文学质量。正式库中的 candidate / model_matched / exact_source_id 不能仅因存储位置升级为已核证据。
+
+## 项目导入、绑定与迁移
+
+不传入 corpus 参数的旧导入仍生成 v1 项目。新绑定项目把正文只放在 SQLite 中，project.json 保存段落选择、内容摘要、译文与修订状态；read_project 按需校验并加载来源，旧编辑/预览接口继续可用。
+
+~~~sh
+python scripts/ltr project import <source.epub> --items <spine-id> --project <P> --corpus <P/corpus>
+python scripts/ltr project migrate --project <P> --corpus <P/corpus>
+python scripts/ltr project bind --project <P> --corpus <existing/dialogue.sqlite> --edition <edition-id>
+python scripts/ltr project recover --project <P>
+~~~
+
+- import 的 P 必须是新目录；import/migrate 的新库必须是 P 的直接子目录且尚不存在。不会写已有库、修改正式库、更新共享配置或自动导入模型候选。
+- migrate 迁移当前 v1 项目：当前译文、状态、修订号、上下文与 issues 保持，已有 history 文件逐字节保留；原 project.json 另作逐字节备份。新 v2 修订的历史只保存库引用，不再复制正文。
+- bind 只读绑定已经存在、具有本工具段落元数据的语料库；段落 ID、正文和完整定位元数据必须与 v1 项目精确一致。不会猜测 ID 映射、替换原文或向库中补写元数据。不满足条件时拒绝，不能将近似文本匹配当成绑定。
+- 新库提取日文角引号片段（支持嵌套、跨段和未闭合）；只记录原文跨度，归属保持 unresolved，不授予人工、语义或参考资格。没有角引号时仍可在工作台“版本”列表看到版本，不伪造对白。
+- SQLite 在发布后视为不可变：每次项目读取核对完整文件摘要、逐段摘要与原始快照；来源变化即拒绝。数据库和项目在同一目录树时可整体移动；外部绑定路径相对项目记录，移动前须保持相对位置。
+- 构建前记录 pending 意图，先校验新工作库，最后原子替换 project.json 作为发布点。中断前仍是可读的旧 v1，或尚未发布的新目录；中断后已有 pending 时用 recover 完成。已有库不被重建，未完成暂存文件保留并列入私有回执，不自动删除。首次准备记录出现之前的文件创建失败只会留下未发布目录，不称为已完成导入。
+- pending 存在时阻止其他编辑；恢复时核对旧项目摘要/已发布的新项目、来源和快照，冲突拒绝。项目已继续编辑后，旧发布回执不能用来倒填恢复。
+
+回执、原始 XHTML 快照、项目、工作库及未完成暂存都属于私有书稿材料，须放在 Git 外。结构和绑定通过不等于阅读覆盖或文学验收。
 
 ## 查看器配置
 

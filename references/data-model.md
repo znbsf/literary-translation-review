@@ -72,6 +72,14 @@ python scripts/ltr corpus check <dialogue.sqlite>
 
 检查核验当前核心数据与字段，不推断记录的人工或语义资格；已在 alignments 中的机器记录仍保留其候选状态。缺失或无效数据报告代码与计数，不输出正文、定位 ID 或私有路径。
 
+## 绑定项目与旧格式排序
+
+新版 translation-project-v2 的 project.json 不保存 source 正文；corpus_binding 记录相对数据库路径、整库摘要、版本 ID，以及按顺序选定的段落 ID/摘要。读取时重建兼容的内存对象并校验 source_digest，译文和状态仍由项目保存。
+
+工具导入的 paragraphs.locator_json 保留原始 EPUB 定位，并在 _project_source_fields 中保留完整的非正文段落元数据（如 ruby），用于无损重建和精确绑定；正文始终只从 paragraphs.text 读取。原始 XHTML 快照及旧项目备份是溯源档案，不是另一套可变原文。
+
+新版库的对白序号仍受非负整数约束。未标版本的旧库允许经过证据验证的 ASCII 引号补录排序键：在整数 base 后插入 n 条时为 base + k/(n+1)，也可在首条 0 前插入。兼容检查核对补录类型、原文跨度、整组公式、顺序和整数锚点，另报数量警告；不改变存量数值，不赋予任何语义或人工资格。通用未知小数仍是检查失败。
+
 ## 可选表
 
 | 表 | 用途 |

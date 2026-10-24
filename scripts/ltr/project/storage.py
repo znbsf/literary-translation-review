@@ -20,21 +20,23 @@ class StorageError(ValueError):
 def private_root(path: Path) -> Path:
     path = path.absolute()
     for parent in (path, *path.parents):
-        if parent.is_symlink() or parent.is_junction():
+        if parent.is_symlink() or getattr(parent, "is_junction", lambda: False)():
             raise StorageError("linked_private_root")
         if (parent / ".git").exists():
             raise StorageError("private_root_inside_git")
     return path.resolve()
 
 
-def atomic_write(path: Path, text: str) -> None:
+def atomic_write(path: Path, text: str | bytes) -> None:
     root = private_root(path.parent)
-    if path.is_symlink() or path.is_junction():
+    if path.is_symlink() or getattr(path, "is_junction", lambda: False)():
         raise StorageError("linked_output")
     root.mkdir(parents=True, exist_ok=True)
     temporary = None
     try:
-        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=root, delete=False) as stream:
+        mode = "wb" if isinstance(text, bytes) else "w"
+        options = {} if isinstance(text, bytes) else {"encoding": "utf-8"}
+        with tempfile.NamedTemporaryFile(mode, dir=root, delete=False, **options) as stream:
             temporary = Path(stream.name)
             stream.write(text)
             stream.flush()
@@ -55,7 +57,10 @@ def read_project(root: Path) -> dict:
     if path.is_symlink() or path.stat().st_size > 20_000_000:
         raise StorageError("invalid_project_file")
     value = json.loads(path.read_text(encoding="utf-8"))
-    if value.get("format") != "translation-project-v1":
+    if value.get("format") == "translation-project-v2":
+        from .binding import hydrate
+        value = hydrate(root, value)
+    elif value.get("format") != "translation-project-v1":
         raise StorageError("unknown_project_format")
     validate_project(value)
     snapshot = root / "source-snapshot.json"
@@ -118,6 +123,14 @@ def _create_project(root: Path, imported: dict) -> dict:
     root = private_root(root)
     if (root / "project.json").exists():
         raise StorageError("project_already_exists")
+    project = build_project(imported)
+    write_json(root / "source-snapshot.json", imported)
+    write_json(root / "project.json", project)
+    return project
+
+
+def build_project(imported: dict) -> dict:
+    """Build a validated value without publishing files."""
     source = []
     for item in imported["items"]:
         for paragraph in item["paragraphs"]:
@@ -135,9 +148,6 @@ def _create_project(root: Path, imported: dict) -> dict:
         "model_calls": 0,
     }
     validate_project(project)
-    # Preserve exact selected XHTML in private JSON, never in the preview DOM or prompts.
-    write_json(root / "source-snapshot.json", imported)
-    write_json(root / "project.json", project)
     return project
 
 
@@ -147,6 +157,9 @@ def apply_edits(root: Path, edit: dict) -> dict:
 
 
 def _apply_edits(root: Path, edit: dict) -> dict:
+    from .binding import PENDING, stored_project
+    if (root / PENDING).exists():
+        raise StorageError("project_recovery_required")
     project = read_project(root)
     if (edit.get("book_hash") != project["book_hash"] or
             edit.get("source_digest") != project["source_digest"] or
@@ -180,6 +193,6 @@ def _apply_edits(root: Path, edit: dict) -> dict:
     previous_revision = project["revision"]
     project["revision"] += 1
     validate_project(project)
-    write_json(root / "history" / f"revision-{previous_revision}.json", read_project(root))
-    write_json(root / "project.json", project)
+    write_json(root / "history" / f"revision-{previous_revision}.json", stored_project(read_project(root)))
+    write_json(root / "project.json", stored_project(project))
     return project

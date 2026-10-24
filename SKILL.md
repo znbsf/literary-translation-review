@@ -19,7 +19,7 @@ description: Review or retranslate book-length literature from the source, inclu
 
 ## 工作流
 
-1. **冻结来源、范围与词表。** 建立版本清单、稳定段落ID和定位；完整共享已确认名称与固定表达并锁定版本。提案与确认项分开，后续建议不得回退已确认裁定。（`ltr corpus init/check`、`ltr project import`）
+1. **冻结来源、范围与词表。** 建立版本清单、稳定段落ID和定位；完整共享已确认名称与固定表达并锁定版本。提案与确认项分开，后续建议不得回退已确认裁定。（`ltr corpus init/check`、`ltr project import --corpus / bind / migrate / recover`）
 2. **先理解全书。** 完整阅读本书后建立八维理解和翻译决策台账，再按实际问题反查相关前作；不要先扫描全部历史库。每条理解必须指向具体翻译决定。详细字段见 [references/evidence-and-corpus.md](references/evidence-and-corpus.md)。
 3. **按证据对齐。** 检索命中只是候选；核对原文、人物、语境和版本后才能称为对应。区分读者知识与人物当时所知，并分开记录原文事实、角色叙述和审校解释。（`ltr align`、`ltr attribute`、`ltr quotes`、`ltr ocr-*` 生成候选，`ltr workbench` 查看）
 4. **生成或审校。** 新译或需要独立重译时，使用原文、全书理解及已核实的历史证据组织干净上下文；先冻结 source-first 新候选，再与当前译稿或旧译比较。审校既有译稿时先查意义，再查声线、固定译法和文学装置。（`ltr project check-context`、`ltr project render / apply`）

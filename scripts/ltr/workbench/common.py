@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import unicodedata
 from datetime import datetime, timezone
@@ -240,3 +241,10 @@ def _image_content_type(path: Path) -> str:
         ".webp": "image/webp",
         ".bmp": "image/bmp",
     }.get(path.suffix.lower(), "application/octet-stream")
+
+
+def _dialogue_ordinal(value: Any) -> int | float:
+    """Keep finite legacy insertion ranks; never truncate them to an integer."""
+    if isinstance(value, float) and math.isfinite(value):
+        return value
+    return _as_int(value)
