@@ -20,6 +20,7 @@ _CORPUS_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
 # Optional evidence sources: config key -> "file" or "dir".
 EVIDENCE_PATHS = {
+    "glossary": "file",
     "candidate_index": "file",
     "alignment_index": "file",
     "attribution_index": "file",
@@ -132,7 +133,7 @@ class WorkbenchConfig:
                         value = ocr_vision_index.validate_directory_path(value, root)
                     except (ocr_vision_index.OCRVisionIndexError, OSError, ValueError):
                         raise _fail(key + "_config_invalid") from None
-                elif key != "run_snapshot":
+                elif key not in ("run_snapshot", "glossary"):
                     value = value.resolve(strict=False)
                 else:
                     value = value.absolute()  # keep lexical ancestors so the reader can refuse links

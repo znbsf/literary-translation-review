@@ -59,6 +59,10 @@ class WorkbenchStore(OcrViews):
         from ltr.library.evidence import query_evidence
         return query_evidence(self, params)
 
+    def glossary(self, params):
+        from ltr.library.glossary import query_glossary
+        return query_glossary(self, params)
+
     def completion_alignment(self, corpus_id):
         from ltr.alignment.completion import CompletionAlignmentView
         return CompletionAlignmentView(self, corpus_id)
