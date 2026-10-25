@@ -118,7 +118,7 @@ ltr evidence 的返回为 ltr-evidence-v1：来源与正式库分别记录摘要
 ## 词表（固定表达）
 
 ```sql
-CREATE TABLE glossary(
+CREATE TABLE entries(     -- 独立 glossary.sqlite 中的工作条目，不是语料库 entries
   id TEXT PRIMARY KEY,
   source_form TEXT,         -- 原文写法（含注音、括号）
   target_form TEXT,         -- 工作译法
@@ -126,12 +126,31 @@ CREATE TABLE glossary(
   conditions TEXT,          -- 适用语境；固定句的允许变奏
   variants_json TEXT,       -- 已知异译及出处
   sources_json TEXT,        -- 原文出处与历史译本出处（书名、节次、场景）
-  status TEXT,              -- proposed / confirmed / superseded
-  version TEXT              -- 所属词表版本；锁定后不改
+  status TEXT,              -- proposed / confirmed / superseded / rejected
+  created_at TEXT, updated_at TEXT,
+  superseded_by TEXT,       -- 替代条目 ID；保留原条目
+  decision_note TEXT        -- 人工裁定理由
 );
+CREATE TABLE versions(
+  version TEXT PRIMARY KEY, locked_at TEXT, entry_count INTEGER,
+  sha256 TEXT, note TEXT,
+  history_json TEXT         -- 锁定时 superseded/rejected 完整历史快照
+);
+CREATE TABLE version_entries(
+  version TEXT, id TEXT,
+  snapshot_json TEXT,       -- 当时 confirmed 条目的全部字段，不引用可变 entries
+  PRIMARY KEY(version, id)
+);
+CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT); -- schema = ltr-glossary-v1
 ```
 
-批次只共享某一锁定版本中 `confirmed` 的完整清单；`proposed` 留在队列。被推翻的条目标为 `superseded` 并保留。
+批次只共享某一锁定版本中 `confirmed` 的完整清单；`proposed` 留在队列。只有显式 confirm 可以确认；导入 JSON 即使带 confirmed 状态仍只是提案。确认译法变更需新增提案、确认并 supersede，替代项必须是同源写法的 confirmed 条目；被推翻或拒绝的原条目和理由保留，不复活终止条目。
+
+lock 在同一事务中保存完整确认条目与当时的裁定历史，拒绝空确认集和重复版本。旧版本不随工作条目变化，SQLite 触发器拒绝快照/版本修改、删除及向完整快照追加。导出摘要为 UTF-8 规范 JSON（键排序、无空白）中 `{entries, history}` 的 SHA-256；确认条目按 source_form、id 排序，历史按 superseded、rejected 分组后同样排序。读取时重算摘要与条目数，损坏则拒绝。
+
+variants_json 的变体可写为 `{"target_form":"允许的工作变体","allowed":true}`；没有显式 allowed=true 的异译仅供对照，不满足确认词覆盖。sources_json 保存版本/段落 ID、段落及源库摘要、半开字符偏移、提取方法与出现次数；导入记录保存输入摘要和行号，未知出现次数为 0，不伪造原文定位。导入时保留既有来源和变体。
+
+JSON 导出同时提供 `confirmed_glossary`（version、locked=true、sha256、entry_count、complete_for_scope=false）。它可填入审校清单，但 complete_for_scope 仍须由人核对当前书稿范围后显式确认；锁定与程序检查不证明词表完整。
 
 ## 八维理解台账（库外）
 
