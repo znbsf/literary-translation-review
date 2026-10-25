@@ -43,6 +43,7 @@ python scripts/ltr ledger init --ledger <L.json> --project <P> # 库外八维理
 python scripts/ltr ledger check --ledger <L.json> --project <P>
 python scripts/ltr ledger export --ledger <L.json> --manifest <M.json> --write
 python scripts/ltr evidence line --config <cfg.json> --corpus <id> --dialogue <id>
+python scripts/ltr context --help                           # source-first 上下文、冻结、对比与清单导出
 python scripts/ltr glossary --help                          # 库外词表：提案、人工裁定、版本锁定与核对
 python scripts/ltr glossary init --store <私有目录/glossary.sqlite>
 python scripts/ltr glossary export --store <私有目录/glossary.sqlite> --version v1 --format json

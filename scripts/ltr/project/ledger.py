@@ -234,7 +234,7 @@ def understanding(data):
                           for e in active if e["status"] == "decided"]}
 
 
-def _replace_understanding(raw, value):
+def _replace_understanding(raw, value, field="whole_book_understanding"):
     """Locate a top-level JSON value without reserializing any other bytes."""
     text = raw.decode("utf-8")
     document = json.loads(text, object_pairs_hook=_pairs)
@@ -249,13 +249,13 @@ def _replace_understanding(raw, value):
         if text[position] == "}":
             # Preserve existing whitespace, including when adding an absent field.
             prefix = "," if document else ""
-            return (text[:position] + prefix + '"whole_book_understanding": ' + replacement + text[position:]).encode("utf-8")
+            return (text[:position] + prefix + json.dumps(field) + ': ' + replacement + text[position:]).encode("utf-8")
         key, position = decoder.raw_decode(text, position)
         while text[position].isspace() or text[position] == ":":
             position += 1
         start = position
         _, position = decoder.raw_decode(text, position)
-        if key == "whole_book_understanding":
+        if key == field:
             return (text[:start] + replacement + text[position:]).encode("utf-8")
         while text[position].isspace():
             position += 1

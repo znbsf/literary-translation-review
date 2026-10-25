@@ -25,14 +25,40 @@ python scripts/ltr <命令> --help            # 每个命令的参数
 | | `ltr ocr-order` | 已有 OCR 的阅读顺序几何分列 |
 | | `ltr ocr-regions` | 按几何区域逐块转写，每块标记已转写或不可读，写入区域存储 |
 | | `ltr review-queue` | 生成带库指纹的待复核队列 |
-| 4 生成与审校 | `ltr project check-context` | 校验上下文卡：证据来源、偏移与知情终点 |
+| 4 生成与审校 | `ltr context build / freeze / compare / export` | 构建 source-first 上下文、冻结候选、记录对比先后并导出清单 |
+| | `ltr project check-context` | 校验上下文卡：证据来源、偏移与知情终点 |
 | | `ltr project render / apply` | 生成原文-译文对照审校页；导入人工修改并保留历史版本 |
 | 5 改后复查 | `ltr workbench --config <cfg> --port 0` | 本机查看器：概览、对白（上下文与全部机器意见）、扫描页叠框、复核标签与导出 |
 | | `ltr glossary check --version <版本> --project <P>` | 按源段/译段绑定核对固定表达，只报告待复核问题 |
 | 6 交付 | `ltr assemble` | 按最终正文组装 TXT/EPUB |
 | | `python scripts/check_manifest.py <manifest.json>` | 核对申报的覆盖、改后复查与执行记录 |
 
-尚未实现（规划）：source-first 上下文生成与候选冻结命令。在实现前按 [evidence-and-corpus.md](evidence-and-corpus.md) 手工记录，不要声称运行过它们。
+## Source-first 上下文
+
+~~~sh
+python scripts/ltr context build --workspace <W> --project <P> --range <首段ID> <末段ID> --ledger <L.json> --evidence <E.json> --glossary <S> --glossary-version <V>
+python scripts/ltr context build --workspace <W> --project <P> --range <首段ID> <末段ID> --cards <C.json> --horizon <段ID> --probe-old <旧译.txt>
+python scripts/ltr context freeze --workspace <W> --context <context_id> --candidates <C.json>
+python scripts/ltr context compare --workspace <W> --frozen <freeze_id> --project <P> --old <旧译.txt> --output <新文件.json>
+python scripts/ltr context freeze --workspace <W> --context <context_id> --candidates <修改后.json> --supersedes <freeze_id> --reason <理由>
+python scripts/ltr context export --workspace <W> --frozen <freeze_id> --manifest <M.json> --write
+python scripts/ltr context list --workspace <W>
+python scripts/ltr context show --workspace <W> --id <context_id或freeze_id>
+~~~
+
+build 的范围按项目原文顺序取连续段，首末必须存在且不倒置。可选输入只收录四类：source（范围原文及经 compile_context 校验的原文上下文卡）、whole-book-understanding（同一 project.json 摘要的台账 decided 条目）、verified-prior-work（evidence 导出 JSON 的 verified 关系）、confirmed-glossary（glossary export 校验过的锁定版本完整确认项）。pending/withdrawn 台账项、candidate/clue 证据正文不进入上下文；后两者只计未收录数，clue 附列的 verified correspondences 可单独收录。历史关系中的任一段落摘要与范围内原文相同，整次拒绝为 prior_work_overlaps_target_range。JSON 的 origin_kind 按证据来源白名单检查，明确草稿来源与未知类型均拒绝。
+
+固定排除 current-target、rewrite-advice、old-translation-excerpts、draft-derived-target-language-summary。当前 target 仅在内存生成字面指纹，不写入上下文；任何拟收录文本出现范围内当前稿连续至少 20 个 Unicode 字符，拒绝为 current_target_leak。--probe-old 同样以连续 20 字检测，命中为 old_translation_leak；探针只留 SHA-256 和排除类别，正文不写工作区。锁定词表 target_form 长度至少 20 且出现在当前稿，或 source_form 去空白后等于原文整段、或与其共有连续片段覆盖原文至少 80% 并至少 20 字，拒绝为 glossary_contains_target_sentence。污染检查在创建工作区文件之前完成。短于阈值的片段、改写和未声明来源无法据此排除。
+
+W 必须在 Git 与语料目录外，拒绝符号链接、联接点及文件硬链接；按祖先 dialogue.sqlite 与项目绑定的语料根检查，不扫描未声明的任意目录。manifest.json 只存范围、输入类别/标识/摘要/计数、排除项、探针摘要与时间；context.json 才保存私有正文。build 的终端输出只有状态、上下文 ID 和输入摘要。零模型调用、零网络调用。
+
+候选文件为按范围顺序逐一覆盖的 [{"id":"p1","target":"自编新候选"}]，译文不可空。freeze 保存完整候选、摘要、当前 UTC 时间和 before_first_comparison；再冻结必须指定同一上下文的旧冻结与非空理由，保存 changed_ids，旧冻结永不覆盖。compare 先追加事件再读取当前项目译稿及可选旧译；后续读取失败也保留已开始对比的记录。当前项目须保持相同原文摘要及 book_hash，允许译稿已修订。默认输出逐段 candidate/current_target 数组；带 --old 时输出 paragraphs 与整体 old_translations，不猜配旧译段落。--output 只接受工作区外的私有新文件。
+
+上下文与冻结文件均独占创建；events.jsonl 只追加，prev_sha256 绑定前一行原始字节，每条另存自身规范摘要，事件还绑定对应产物的原始字节摘要。读取校验整条链及全部产物，断链、改动或孤立产物均拒绝，写入用目录排他锁。中断留下的半成品不自动修复或覆盖；应保留证据，在新的私有工作区重建。此本地哈希链不是签名或外部可信时间戳，无法防止拥有全部文件写权限者重算整条链，也不能证明无产物的 compare 尾事件未被整体回滚。
+
+export 默认只打印 source_first；--write 原子替换已有审校清单的该字段，其他字节保持。candidate_ids 为段 ID；frozen_before_comparison_ids 沿 supersedes 链取最早对比前冻结所覆盖的段 ID，不是 frz 标识，找不到时为空并交由 check_manifest 如实报错。context_sources 和 context_artifact_ids 来自实际收录清单。--operator-exposure 可选 not-claimed（默认）、exposed、verified-unexposed，只记录操作者声明。list/show 仅显示摘要、计数、时间与事件链状态。
+
+**诚实边界：** 工具只保证通过本工具进入上下文的显式输入、摘要绑定与冻结先后，不证明操作者或主会话从未看过旧译，不声称语义污染检测完备。通过不等于独立生成的心理事实、来源真实性或文学验收。退出码成功 0、拒绝 2；错误只含静态码，不回显正文或路径。
 
 ## 八维理解台账
 

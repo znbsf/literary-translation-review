@@ -38,6 +38,8 @@ COMMANDS = {
     "ocr-order": ("ltr.ocr.reading_order_run", "reading-order geometry for existing OCR"),
     "ocr-regions": ("ltr.ocr.regions_run", "region transcription candidates into a region store"),
     "review-queue": ("ltr.library.review_queue", "fingerprinted queue of records still needing review"),
+    # step 4 — generation and review
+    "context": ("ltr.project.context", "source-first context, immutable candidates and comparison receipts"),
     # step 5 — viewer
     "workbench": ("ltr.workbench", "local read-only viewer: overview, dialogues, scan pages, review labels"),
 }
