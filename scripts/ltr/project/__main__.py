@@ -13,21 +13,7 @@ from .contracts import ContractError, compile_context
 from .catalogue import CatalogueError, locate_chapter
 
 
-WORKFLOW_COMMANDS = {
-    "batch-assemble": "batch_assemble",
-    "batch-translate": "batch_translate",
-    "cycle-report": "cycle_report",
-    "dimension-cycle": "dimension_cycle",
-    "learning-detail": "learning_detail",
-    "learning-export": "learning_export",
-    "learning-finalize": "learning_finalize",
-    "learning-repair": "learning_repair",
-    "series-learning": "series_learning",
-    "series-synthesis": "series_synthesis",
-    "series-workflow": "series_workflow",
-    "series-registry": "series_registry",
-    "reference-window": "reference_window",
-}
+WORKFLOW_COMMANDS = {"reference-window": "reference_window"}
 
 
 class QuietParser(argparse.ArgumentParser):

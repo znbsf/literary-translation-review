@@ -16,7 +16,7 @@ import unittest
 from unittest.mock import patch
 
 from ltr import workbench as wb
-from ltr.library import publisher_identifiers, run_snapshot, source_lineage
+from ltr.library import run_snapshot, source_lineage
 from ltr.ocr import reading_order_index, reading_units
 from ltr.quotes import index as ci
 from tests.ltr.workbench.test_store import FULL_SCHEMA, seed_full
@@ -201,16 +201,12 @@ class EvidenceWorkbenchTests(unittest.TestCase):
             self.assertTrue(self.store.ocr_reading_order_candidate({"corpus": "sample", "id": "p1"})["available"])
             self.assertTrue(self.store.ocr_reading_units({"corpus": "sample", "id": "p1"})["available"])
 
-    def test_publisher_identifiers_and_run_snapshot_keep_real_source_path(self):
+    def test_run_snapshot_keeps_real_source_path(self):
         self.append_formal()
         corpus = self.store.config.corpus("sample")
-        corpus.publisher_identifiers = self.root / "synthetic-identifiers.json"
         corpus.bibliography = self.root / "synthetic-bibliography.json"
         corpus.run_snapshot = self.root / "synthetic-run.json"
-        with patch.object(publisher_identifiers, "overview", return_value={"available": True}) as identifiers, \
-             patch.object(run_snapshot, "read_run_snapshot", return_value={"available": True}) as run:
-            self.assertTrue(self.store._publisher_identifiers(corpus)["available"])
-            self.assertEqual(identifiers.call_args.args[1], self.snapshot)
+        with patch.object(run_snapshot, "read_run_snapshot", return_value={"available": True}) as run:
             view = self.store._evidence_overview(corpus)
             self.assertTrue(view["run_snapshot"]["available"])
             self.assertEqual(run.call_args.args[1], self.original_sha)

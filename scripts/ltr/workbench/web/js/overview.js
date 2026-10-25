@@ -175,7 +175,6 @@ function runSnapshot(snapshot) {
 
 function references(c) {
   const bib = c.publisher_bibliography || {};
-  const ids = c.publisher_identifiers || {};
   const body = h("div", {});
   if (bib.available) {
     body.append(details(`出版社书目 ${num(bib.total)} 条（核对于 ${time(bib.verified_at_utc)}）`,
@@ -188,14 +187,9 @@ function references(c) {
   } else if (bib.error) {
     body.append(notice(`书目不可用：${bib.error}`, "warn"));
   }
-  if (ids.available) {
-    body.append(keyValues([["检索版本", num(ids.searched_editions)], ["检索段落", num(ids.searched_paragraphs)],
-      ["含 ISBN 候选的版本", num(ids.editions_with_candidates)], ["候选行", num(ids.candidate_rows)],
-      ["对应出版记录", num(ids.distinct_publisher_records)]]));
-  }
   if (!body.childNodes.length) return null;
   body.append(h("p", { class: "muted" }, "书目与本地版本的对应关系未经核实，仅供参考。"));
-  return section("书目与出版标识", body);
+  return section("出版社书目", body);
 }
 
 function safeLink(value) {

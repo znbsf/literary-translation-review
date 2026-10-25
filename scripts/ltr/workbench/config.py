@@ -25,7 +25,6 @@ EVIDENCE_PATHS = {
     "alignment_index": "file",
     "attribution_index": "file",
     "bibliography": "file",
-    "publisher_identifiers": "file",
     "run_snapshot": "file",
     "ocr_vision_candidates": "dir",
     "ocr_reading_order_candidates": "dir",
@@ -138,8 +137,6 @@ class WorkbenchConfig:
                 else:
                     value = value.absolute()  # keep lexical ancestors so the reader can refuse links
                 evidence[key] = value
-            if "publisher_identifiers" in evidence and "bibliography" not in evidence:
-                raise _fail("publisher_identifiers_require_bibliography")
             snapshot = None
             if "source_snapshot_db" in entry or "source_snapshot_sha256" in entry:
                 if not isinstance(entry.get("source_snapshot_sha256"), str):

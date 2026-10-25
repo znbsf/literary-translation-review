@@ -79,7 +79,7 @@ def _source_rows(database: Path, edition: str, selection: list) -> tuple[list, s
     return source, before
 
 
-def hydrate(root: Path, value: dict) -> dict:
+def hydrate(root: Path, value: dict, *, allow_missing_units=False) -> dict:
     try:
         binding = value["corpus_binding"]
         if (binding["schema"] != "project-corpus-binding-v1" or not binding["selection"]
@@ -91,7 +91,7 @@ def hydrate(root: Path, value: dict) -> dict:
             raise StorageError("bound_corpus_changed")
         result = copy.deepcopy(value)
         result["source"] = source
-        validate_project(result)
+        validate_project(result, allow_missing_units=allow_missing_units)
         return result
     except (KeyError, TypeError, ValueError) as exc:
         if isinstance(exc, StorageError):
