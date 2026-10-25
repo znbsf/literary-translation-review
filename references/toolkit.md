@@ -15,6 +15,7 @@ python scripts/ltr <命令> --help            # 每个命令的参数
 | 1 建库与检查 | `ltr corpus init <新目录>` / `ltr corpus check <dialogue.sqlite>` | 新建私有空库；只读核对已有库的核心字段、ID、范围、JSON 与引用，只输出计数和摘要 |
 | 1 项目绑定 | `ltr project import --corpus / bind / migrate / recover` | 新工作库导入、已有库精确只读绑定、旧项目迁移与中断恢复 |
 | 1 冻结来源 | `ltr project inspect / locate / import` | 只读解析 EPUB 元数据与导航；按显式 spine 导入，建立稳定段落定位与原始快照 |
+| 2 理解全书 | `ltr ledger init / add / decide / edit / remove / confirm-read / check / export / list` | 库外八维理解台账，显式阅读声明与翻译决定，导出审校清单段 |
 | 3 查询证据 | `ltr evidence line / speaker / term` | 跨版本、人物与字面词条查询；已核/候选/线索分级，不写库 |
 | 3 按证据对齐 | `ltr quotes` → `quotes-review` → `quotes-index` | 无引号版本的引用片段候选、独立复核、只读索引 |
 | | `ltr align` / `align-plan` / `align-campaign` → `align-review` → `align-index` | 对白对齐提议、按冻结证据规划目标、有限连续会话、独立复核、只读索引 |
@@ -29,7 +30,26 @@ python scripts/ltr <命令> --help            # 每个命令的参数
 | 6 交付 | `ltr assemble` | 按最终正文组装 TXT/EPUB |
 | | `python scripts/check_manifest.py <manifest.json>` | 核对申报的覆盖、改后复查与执行记录 |
 
-尚未实现（规划）：词表锁定命令、八维理解台账命令、source-first 上下文生成与候选冻结命令。在实现前按 [evidence-and-corpus.md](evidence-and-corpus.md) 手工记录，不要声称运行过它们。
+尚未实现（规划）：词表锁定命令、source-first 上下文生成与候选冻结命令。在实现前按 [evidence-and-corpus.md](evidence-and-corpus.md) 手工记录，不要声称运行过它们。
+
+## 八维理解台账
+
+~~~sh
+python scripts/ltr ledger init --ledger <L.json> --project <P>
+python scripts/ltr ledger add --ledger <L.json> --dimension character_arcs --kind fact --locator <段落ID> --observation <观察> --decision <决定>
+python scripts/ltr ledger decide --ledger <L.json> --id d1 --decision <决定>
+python scripts/ltr ledger confirm-read --ledger <L.json> --by <人工声明者> --note <说明>
+python scripts/ltr ledger check --ledger <L.json> --project <P>
+python scripts/ltr ledger export --ledger <L.json> --manifest <M.json> --write
+~~~
+
+init 通过 read_project 读取 v1/v2 项目，按原顺序冻结段落范围和 project.json 文件 SHA-256，已有台账拒绝覆盖。台账及写入清单须在 Git 与语料目录之外；拒绝链接路径，以目录排他锁和原子替换保护写入。检测祖先目录的 dialogue.sqlite；初始化还检查项目绑定的数据库目录。并发写遇锁即拒绝，不自动重试或移除已有锁。
+
+add 的 kind 只能是 fact（原文事实）、narration（角色叙述或信念）、interpretation（审校解释）；分类由记录者负责，程序不判断文学解释真假。省略 decision 为 pending；提供时必须非空。可用 --range <首段> <末段> 指定有序范围，locator 必须位于其中。edit 使用与 add 相同的可选字段，--pending 清除决定并改为待决，--clear-range 清除范围。remove 只标 withdrawn，保留记录与 ID；撤回项不计入 check 和 export。list 可按 --dimension / --status 筛选。
+
+只有 confirm-read 写入全书已读声明及声明者、UTC 时间、备注。覆盖八维不会自动声明阅读；程序记录人工申报，不验证声明者身份或实际阅读。check 只读报告缺维度、定位问题、空决定、pending、未声明阅读；带 --project 时再核对摘要与范围。退出码为 0 无问题、1 有问题；其他命令的参数或环境拒绝为 2。错误只输出静态码，不回显私有文本或路径。
+
+export 默认打印 whole_book_understanding，--manifest 指定目标但默认不读取或写入清单；--write 更新已有清单，逐字节保留目标值以外的内容，目标段缺失则追加。dimensions 包含非撤回条目实际覆盖的维度，decisions 仅包含 decided 项。pending 和未声明阅读允许如实导出，仍由 check 与 check_manifest 报告不完整；结构损坏的记录拒绝导出。清单通过不代表文学质量或人工终审。
 
 ## 建库与只读检查
 

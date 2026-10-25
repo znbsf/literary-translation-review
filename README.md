@@ -38,6 +38,9 @@ python scripts/ltr project import <source.epub> --items <id> --project <P> --cor
 python scripts/ltr project migrate --project <P> --corpus <P/corpus>
 python scripts/ltr project recover --project <P>
 python scripts/ltr project demo --project <新的私有目录>      # 合成示例，零模型调用
+python scripts/ltr ledger init --ledger <L.json> --project <P> # 库外八维理解台账
+python scripts/ltr ledger check --ledger <L.json> --project <P>
+python scripts/ltr ledger export --ledger <L.json> --manifest <M.json> --write
 python scripts/ltr evidence line --config <cfg.json> --corpus <id> --dialogue <id>
 python scripts/ltr workbench --config <本机配置.json> --port 0   # 本机查看器
 python scripts/check_manifest.py assets/review-manifest.example.json
