@@ -12,7 +12,6 @@ from typing import Any, Mapping, Sequence
 from ltr.library import bibliography
 from ltr.library import archive as candidate_archive
 from ltr.ocr import vision_index as ocr_vision_index
-from ltr.library import publisher_identifiers
 from ltr.library import run_snapshot
 from .common import WorkbenchError, SCHEMA_ID, REVIEW_EXPORT_SCHEMA, DEFAULT_LIMIT, MAX_LIMIT, MAX_OFFSET, MAX_QUERY_CHARS, MAX_FILTER_CHARS, MAX_ID_CHARS, MAX_NOTE_CHARS, MAX_SPEAKER_CHARS, MAX_CONTEXT_PARAGRAPH_CHARS, MAX_DIALOGUE_TEXT_CHARS, CONTEXT_WINDOW, ALLOWED_VERDICTS
 from .common import (_dialogue_ordinal, _as_bool, _as_int, _bounded_int, _clamp, _clean_text, _contained, _id_list,
@@ -281,16 +280,6 @@ class WorkbenchStore(OcrViews):
             "reviews_enabled": self.config.reviews_enabled,
         }
 
-    def _publisher_identifiers(self, corpus: CorpusConfig) -> dict[str, Any]:
-        if corpus.publisher_identifiers is None:
-            return {"available": False, "error": None}
-        try:
-            evidence, db = self.evidence_database(corpus.id)
-            with _verified_evidence(db):
-                return publisher_identifiers.overview(evidence.publisher_identifiers, evidence.db_path, evidence.bibliography)
-        except WorkbenchError as exc:
-            return {"available": False, "error": exc.code}
-
     def _run_snapshot(self, corpus: CorpusConfig, db: CorpusDatabase) -> dict[str, Any]:
         if corpus.run_snapshot is None:
             return {"available": False}
@@ -360,7 +349,6 @@ class WorkbenchStore(OcrViews):
                 "source_coverage": {"available": False, "error": "database_unavailable"},
             },
             "publisher_bibliography": bibliography.overview(corpus.bibliography),
-            "publisher_identifiers": self._publisher_identifiers(corpus),
             "ocr_vision_candidates": {"available": False, "error": "ocr_vision_source_unavailable" if corpus.ocr_vision_candidates is not None else None},
             "ocr_reading_order_candidates": {"available": False, "error": "ocr_reading_order_source_unavailable" if corpus.ocr_reading_order_candidates is not None else None},
             "ocr_regions": {"available": False, "error": "ocr_regions_source_unavailable" if corpus.ocr_regions is not None else None},
@@ -498,7 +486,6 @@ class WorkbenchStore(OcrViews):
             "pending_alignments": pending_alignments,
             "pending_identities":pending_identities,
             "publisher_bibliography": bibliography.overview(corpus.bibliography),
-            "publisher_identifiers": self._publisher_identifiers(corpus),
             **evidence_overview,
             "review_count": len(self.reviews.load(corpus.id)),
         }

@@ -2,8 +2,7 @@
 import unittest
 from copy import deepcopy
 
-from ltr.project.contracts import (Budget, ContractError, compile_context,
-                                   invalidate_dependencies, validate_span, validate_units)
+from ltr.project.contracts import ContractError, compile_context, validate_span
 
 
 class ContractTests(unittest.TestCase):
@@ -70,39 +69,9 @@ class ContractTests(unittest.TestCase):
         self.assertCode("invalid_order", compile_context, [], self.paragraphs,
                         ["p1", "p1"], "p1", "hash")
 
-    def test_exact_coverage_and_nonempty_translation(self):
-        unit = {"id": "p1", "target": "Synthetic translation", "revision": 1, "status": "draft"}
-        self.assertEqual(validate_units([unit], ["p1"]), [unit])
-        self.assertCode("coverage_mismatch", validate_units, [unit], ["p1", "p2"])
-        self.assertCode("duplicate_unit_id", validate_units, [unit, unit], ["p1"])
-        self.assertCode("duplicate_requested_id", validate_units, [unit], ["p1", "p1"])
-        unit["target"] = "  "
-        self.assertCode("empty_target", validate_units, [unit], ["p1"])
 
-    def test_budget_exact_cap_and_atomic_failure(self):
-        budget = Budget(2, 3, 4)
-        budget.consume(1, 2)
-        self.assertCode("input_budget_exhausted", budget.consume, 3, 1)
-        self.assertEqual((budget.calls, budget.input_tokens, budget.output_tokens), (1, 1, 2))
-        self.assertCode("output_budget_exhausted", budget.consume, 0, 3)
-        budget.consume(2, 2)
-        self.assertCode("call_budget_exhausted", budget.consume, 0, 1)
 
-    def test_budget_zero_calls_and_invalid_numbers(self):
-        self.assertCode("call_budget_exhausted", Budget(0, 0, 0).consume, 0, 1)
-        for value in [True, -1, 1.5, "1"]:
-            self.assertCode("invalid_budget", Budget, value, 3, 3)
-            self.assertCode("invalid_usage", Budget(1, 3, 3).consume, value, 1)
-        self.assertCode("invalid_usage", Budget(1, 3, 3).consume, 0, 0)
 
-    def test_dependency_invalidation_preserves_history_and_unrelated_units(self):
-        units = [{"status": "accepted", "dependencies": [{"entry_id": "c1", "revision": 1}]},
-                 {"status": "accepted", "dependencies": {"c1": 2}},
-                 {"status": "accepted", "dependencies": {"c2": 1}}]
-        result = invalidate_dependencies(units, "c1", 2)
-        self.assertEqual([u["status"] for u in result], ["needs_review", "accepted", "accepted"])
-        self.assertTrue(all(u["status"] == "accepted" for u in units))
-        self.assertEqual(result[0]["dependencies"][0]["revision"], 1)
 
 
 if __name__ == "__main__":

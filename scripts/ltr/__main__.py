@@ -15,11 +15,11 @@ if __package__ in (None, ""):  # started as `python scripts/ltr`: make the packa
 COMMANDS = {
     # step 1 — sources, projects and glossary
     "project": ("ltr.project", "EPUB preparation, corpus binding, review and explicitly authorized private workflows"),
-    "assemble": ("ltr.project.batch_assemble", "assemble reviewed batches into TXT/EPUB"),
+    "assemble": ("ltr.project.assemble", "assemble confirmed project translations into TXT/EPUB"),
     "corpus": ("ltr.library.corpus", "initialize a private corpus or check an existing database read-only"),
     "glossary": ("ltr.library.glossary", "private wording proposals, human decisions, locked snapshots and read-only checks"),
     "evidence": ("ltr.library.evidence", "read-only line, speaker and term evidence with provenance levels"),
-    "tools": ("ltr.tools", "maintenance tools: alias maps, manifest, basis detection, identity merge, guarded writes, leak scan"),
+    "tools": ("ltr.tools", "maintenance tools: manifest and leak scan"),
     # step 3 — evidence candidates
     "quotes": ("ltr.quotes.batch", "quote-span candidates for editions without quote markup"),
     "quotes-review": ("ltr.quotes.review", "independent model review of quote candidates"),
@@ -35,7 +35,6 @@ COMMANDS = {
     "ocr-vision": ("ltr.ocr.vision_run", "whole-page OCR candidates (plan / run)"),
     "ocr-order": ("ltr.ocr.reading_order_run", "reading-order geometry for existing OCR"),
     "ocr-regions": ("ltr.ocr.regions_run", "region transcription candidates into a region store"),
-    "publisher-scan": ("ltr.library.publisher_scan", "find ISBN occurrences against a verified bibliography"),
     "review-queue": ("ltr.library.review_queue", "fingerprinted queue of records still needing review"),
     # step 5 — viewer
     "workbench": ("ltr.workbench", "local read-only viewer: overview, dialogues, scan pages, review labels"),

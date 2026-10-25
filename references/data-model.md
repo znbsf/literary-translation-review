@@ -91,7 +91,7 @@ ltr evidence 的返回为 ltr-evidence-v1：来源与正式库分别记录摘要
 | 表 | 用途 |
 | --- | --- |
 | `entries` | 审校工作条目：原文、译文、说话人、对齐与参考资格的扁平视图 |
-| `attribution_candidates` | 说话人/听者候选（surface 原样写法 + canonical 归一名），附检测器与运行标识及资格标记 |
+| `attribution_candidates` | 说话人/听者候选（surface 原样写法 + canonical 归一名），附运行标识及资格标记 |
 | `scan_collections`, `scan_pages` | 扫描书：每页 `image_path`、`image_sha256`、宽高、OCR 状态 |
 | `chapter_candidates`, `edition_pair_candidates` | 章节切分与跨语种版本配对的候选，带 `status`/`basis` |
 | `corpus_candidate_archive` | 经复核流程追加进正式库的机器候选：kind、来源摘要、记录 JSON、导入批次与资格标记 |

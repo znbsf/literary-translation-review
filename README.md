@@ -37,6 +37,7 @@ python scripts/ltr corpus check <已有的dialogue.sqlite>       # 只读结构/
 python scripts/ltr project import <source.epub> --items <id> --project <P> --corpus <P/corpus>
 python scripts/ltr project migrate --project <P> --corpus <P/corpus>
 python scripts/ltr project recover --project <P>
+python scripts/ltr assemble --project <P> --out <私有目录> --format both
 python scripts/ltr project demo --project <新的私有目录>      # 合成示例，零模型调用
 python scripts/ltr evidence line --config <cfg.json> --corpus <id> --dialogue <id>
 python scripts/ltr glossary --help                          # 库外词表：提案、人工裁定、版本锁定与核对

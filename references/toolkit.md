@@ -23,7 +23,7 @@ python scripts/ltr <命令> --help            # 每个命令的参数
 | | `ltr ocr-vision plan / run` | 整页 OCR 候选 |
 | | `ltr ocr-order` | 已有 OCR 的阅读顺序几何分列 |
 | | `ltr ocr-regions` | 按几何区域逐块转写，每块标记已转写或不可读，写入区域存储 |
-| | `ltr publisher-scan`、`ltr review-queue` | 依已核书目查 ISBN 出现位置；生成带库指纹的待复核队列 |
+| | `ltr review-queue` | 生成带库指纹的待复核队列 |
 | 4 生成与审校 | `ltr project check-context` | 校验上下文卡：证据来源、偏移与知情终点 |
 | | `ltr project render / apply` | 生成原文-译文对照审校页；导入人工修改并保留历史版本 |
 | 5 改后复查 | `ltr workbench --config <cfg> --port 0` | 本机查看器：概览、对白（上下文与全部机器意见）、扫描页叠框、复核标签与导出 |
@@ -69,29 +69,13 @@ python scripts/ltr project recover --project <P>
 
 回执、原始 XHTML 快照、项目、工作库及未完成暂存都属于私有书稿材料，须放在 Git 外。结构和绑定通过不等于阅读覆盖或文学验收。
 
-## 项目阶段工作流
+## 项目参考窗口与交付
 
-用 `python scripts/ltr project <子命令> --help` 查看参数；设置好 PYTHONPATH 后也可用 `python -m ltr.project <子命令>`。原模块入口保留，统一入口调用相同的解析器与实现。准备入口的 preflight 仍不可执行，不代表下面的模型工作流已获授权。
+`ltr project reference-window --help` 查看显式选择既有译本窗口的参数。窗口写入新的私有文件，不声称已对齐。
 
-| 子命令 | 作用 |
-| --- | --- |
-| dimension-cycle | 单范围的上下文、维度、初译、比较与复核阶段 |
-| series-workflow | 章节切块、输入冻结、阶段续接与精确装配 |
-| series-registry | 系列 profile、背景、人工确认与运行绑定 |
-| series-learning | 系列材料准备、逐块学习与状态查询 |
-| series-synthesis | 带证据绑定的跨卷候选汇总 |
-| learning-finalize | 有界等待已有任务后导出与汇总；STOP 或失败阻止新调用 |
-| learning-repair | 对明确失败证据作一次有界重核，保留旧尝试 |
-| learning-export | 导出候选知识与 registry，保留来源和未确认状态 |
-| learning-detail | 导出有效叶记录及逐块覆盖限制，不以摘要替代原记录 |
-| batch-translate | 批量翻译、状态、显式重试与缺漏修复 |
-| batch-assemble | 完整覆盖及摘要校验后导出私有 TXT/EPUB 初稿；也可用 ltr assemble |
-| reference-window | 显式选择既有译本窗口，写入新的私有文件，不声称已对齐 |
-| cycle-report | 生成私有阶段报告与逐段对照 |
+`ltr assemble --project <P> --out <私有目录> [--format epub|txt|both]` 从 v2 书稿项目按源段顺序组装，默认同时输出 TXT 和 EPUB。每段必须有非空且 accepted 的译文，否则失败并报告段 ID。显式 `--allow-draft` 可输出未确认稿，首页标注“含未确认草稿”，空白或缺失译文显示“〔缺失译文〕”，不填入原文。
 
-这些入口中的模型阶段可能直接发出真实调用，不统一要求 --execute。运行前须有覆盖材料、区段、语言、端点、允许外发内容、私有输出及调用/token/费用与重试上限的授权；命令注册本身不授予访问权，也不继承旧任务额度。开发验证只用合成夹具，不调用模型。
-
-保留 STOP 和既有尝试记录，不因旧交付或旧队列自动恢复、重置次数或重复发送。初译冻结后才可独立启用译本比较；修订撤销旧确认，候选不会自动获得参考资格。程序遍历、全文扫描、场景精读、修改复核、结构验证和阅读器验收分别报告。
+输出目录必须在 Git 外的私有根下；已有文件一律拒绝覆盖，每个文件原子发布。成品使用读者编号，不附带内部段 ID、源定位或本机路径。输出为纯文字版，不包含原书图片；结构成功不代表文学终审或阅读器验收。
 
 读者版卷首简述原稿、既有译稿及所用 AI，工程账本留在私有附件。目录使用实际节次，译注保留往返链接，EPUB3 导航与 NCX 目录保持一致；引用以书名、实际节号及可识别场景呈现，未核实章节须明示。购买入口须核对版本、作者及纸书/电子书，封面优先使用实际原稿封面，缺失时再取自已核实商品页，不生成替代封面。前作证据须对应具体翻译决定，读者背景不等于角色当时知情；先独立形成译法再比较现译。人工终译、术语确认和发布授权不能由工具成功替代。
 
@@ -176,7 +160,6 @@ python scripts/ltr glossary check --store <S> --version v1 --pairs <pairs.json>
     "ocr_regions": "…/regions.sqlite",
     "run_snapshot": "…/run-snapshot.json",
     "bibliography": "…/publisher-bibliography.json",
-    "publisher_identifiers": "…/publisher-id-candidates.json",
     "source_snapshot_db": "…/dialogue.source-<sha>.sqlite", "source_snapshot_sha256": "<sha>"
   }],
   "review_dir": "…/reviews"
@@ -199,15 +182,11 @@ python scripts/ltr glossary check --store <S> --version v1 --pairs <pairs.json>
 
 ## 其他工具
 
-`python scripts/ltr tools <子命令> [参数]` 是维护工具统一入口，也可从 scripts/ 运行 `python -m ltr.tools <子命令>`。各原模块入口保留；参数原样传给对应工具，写库工具不会被查看器调用。
+`python scripts/ltr tools <子命令> [参数]` 是维护工具统一入口，也可从 scripts/ 运行 `python -m ltr.tools <子命令>`。参数原样传给对应工具。
 
 | 子命令 | 作用 |
 | --- | --- |
-| alias-map / reviewed-alias-map | 生成待人工复核的别名提议 / 合并已复核别名 |
 | manifest | 生成语料清单和摘要，不修改数据库 |
-| basis-detect | 只读检测指代依据 |
-| merge-identities | 校验并合并归属候选批次 |
-| apply-attribution / correct-canonical | 受控写库，保留备份、事务与回执 |
 | leak-scan | 扫描语料泄露；沿用 --root / --corpus / --declared 参数 |
 
 ~~~sh

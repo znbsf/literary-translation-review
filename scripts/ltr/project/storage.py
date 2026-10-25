@@ -57,7 +57,12 @@ def read_private_json(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def read_project(root: Path) -> dict:
+def read_project(root: Path, *, allow_missing_units=False) -> dict:
+    """Read a verified project; assembly may inspect missing units for diagnostics.
+
+    The opt-in permits absent units only, never duplicate or foreign unit IDs.
+    Source bindings, snapshots and all supplied unit fields remain validated.
+    """
     root = private_root(root)
     path = root / "project.json"
     if path.is_symlink() or path.stat().st_size > 20_000_000:
@@ -65,10 +70,10 @@ def read_project(root: Path) -> dict:
     value = json.loads(path.read_text(encoding="utf-8"))
     if value.get("format") == "translation-project-v2":
         from .binding import hydrate
-        value = hydrate(root, value)
+        value = hydrate(root, value, allow_missing_units=allow_missing_units)
     elif value.get("format") != "translation-project-v1":
         raise StorageError("unknown_project_format")
-    validate_project(value)
+    validate_project(value, allow_missing_units=allow_missing_units)
     snapshot = root / "source-snapshot.json"
     if snapshot.is_symlink() or snapshot.stat().st_size > 200_000_000:
         raise StorageError("invalid_source_snapshot")
@@ -77,7 +82,7 @@ def read_project(root: Path) -> dict:
     return value
 
 
-def validate_project(project: dict) -> None:
+def validate_project(project: dict, *, allow_missing_units=False) -> None:
     try:
         if type(project["revision"]) is not int or project["revision"] < 1:
             raise StorageError("invalid_project_revision")
@@ -86,7 +91,8 @@ def validate_project(project: dict) -> None:
             raise StorageError("source_changed")
         ids = [p["id"] for p in source]
         unit_ids = [u["id"] for u in units]
-        if len(ids) != len(set(ids)) or len(unit_ids) != len(set(unit_ids)) or set(ids) != set(unit_ids):
+        if (len(ids) != len(set(ids)) or len(unit_ids) != len(set(unit_ids)) or not set(unit_ids) <= set(ids)
+                or (not allow_missing_units and set(ids) != set(unit_ids))):
             raise StorageError("coverage_mismatch")
         if any(not isinstance(p["text"], str) for p in source):
             raise StorageError("invalid_source")

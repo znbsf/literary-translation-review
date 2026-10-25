@@ -3,16 +3,7 @@ from importlib import import_module
 import argparse
 import json
 
-COMMANDS = {
-    "alias-map": "build_alias_map",
-    "reviewed-alias-map": "build_reviewed_alias_map",
-    "manifest": "corpus_manifest",
-    "basis-detect": "basis_detector_v2",
-    "merge-identities": "merge_identity_batches",
-    "apply-attribution": "apply_attribution_candidates",
-    "correct-canonical": "correct_canonical_values",
-    "leak-scan": "leak_scan",
-}
+COMMANDS = {"manifest": "corpus_manifest", "leak-scan": "leak_scan"}
 
 
 def main(argv=None):
