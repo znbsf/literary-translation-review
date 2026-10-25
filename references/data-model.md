@@ -152,6 +152,14 @@ variants_json 的变体可写为 `{"target_form":"允许的工作变体","allowe
 
 JSON 导出同时提供 `confirmed_glossary`（version、locked=true、sha256、entry_count、complete_for_scope=false）。它可填入审校清单，但 complete_for_scope 仍须由人核对当前书稿范围后显式确认；锁定与程序检查不证明词表完整。
 
+## 八维理解台账（库外）
+
+`ltr ledger` 使用私有 JSON，schema 为 `ltr-ledger-v1`。顶层 `project_sha256` 是初始化时 project.json 原始字节的 SHA-256（可空，check 带项目时核对），`scope` 保存有序 `paragraph_ids`、布尔 `complete_book_read` 和 `read_confirmation`。初始为 false/null；只有人工 confirm-read 写 true 和 `{by, at, note}`。摘要变化不自动重绑，也不把旧声明当作新项目阅读证据。
+
+`entries` 每项保存 `id`、`dimension`、`kind`、`source_locator`、可空的两端 `source_range`、`observation`、`translation_decision`、`status` 及 UTC `created_at/updated_at`。八维键沿用清单校验器：relationships_and_history、character_arcs、plot_knowledge、fixed_wording、addressee_and_register、narrative_style、wordplay_imagery_foreshadowing、notes_versions_sources。
+
+kind 分为 fact / narration / interpretation；原文事实、角色叙述或信念、审校解释分别记录。status 为 pending / decided / withdrawn；decided 必须有非空决定，withdrawn 保留内容但不参与检查覆盖和清单导出。导出 decisions 只保留 id、dimension、source_locator、translation_decision。格式检查不代替阅读或文学判断。
+
 ## 人工复核标签
 
 标签保存在库外（每条记录一个文件或一张独立表），至少含：记录来源与 ID、判定（correct / incorrect / uncertain）、可选说话人/听者/备注、保存时的库指纹与 `context_hash`、版本号与时间。库指纹或上下文变化后标签显示为过期，不自动迁移。

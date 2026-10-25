@@ -38,6 +38,9 @@ python scripts/ltr project import <source.epub> --items <id> --project <P> --cor
 python scripts/ltr project migrate --project <P> --corpus <P/corpus>
 python scripts/ltr project recover --project <P>
 python scripts/ltr project demo --project <新的私有目录>      # 合成示例，零模型调用
+python scripts/ltr ledger init --ledger <L.json> --project <P> # 库外八维理解台账
+python scripts/ltr ledger check --ledger <L.json> --project <P>
+python scripts/ltr ledger export --ledger <L.json> --manifest <M.json> --write
 python scripts/ltr evidence line --config <cfg.json> --corpus <id> --dialogue <id>
 python scripts/ltr glossary --help                          # 库外词表：提案、人工裁定、版本锁定与核对
 python scripts/ltr glossary init --store <私有目录/glossary.sqlite>
