@@ -160,6 +160,16 @@ JSON 导出同时提供 `confirmed_glossary`（version、locked=true、sha256、
 
 kind 分为 fact / narration / interpretation；原文事实、角色叙述或信念、审校解释分别记录。status 为 pending / decided / withdrawn；decided 必须有非空决定，withdrawn 保留内容但不参与检查覆盖和清单导出。导出 decisions 只保留 id、dimension、source_locator、translation_decision。格式检查不代替阅读或文学判断。
 
+## Source-first 上下文与冻结（库外）
+
+`ltr context` 的私有工作区使用 `contexts/<context_id>/manifest.json`、同目录 `context.json`、`frozen/<freeze_id>.json` 及追加式 `events.jsonl`。ID 分别为 ctx-/frz- 加记录规范 JSON SHA-256 的前 16 位；所有产物独占新建，写操作使用目录锁。
+
+清单 schema 为 `ltr-context-v1`，字段包含 project_sha256（project.json 原始字节摘要）、book_hash、source_digest、range（有序段 ID）、inputs（每项 category/artifact_id/sha256/count）、omitted_counts（candidate/clue）、excluded_inputs（固定四项）、probes（类别与 SHA-256）、created_at、context_sha256。清单无正文；context.json 按实际准入类别保存原文、理解条目、已核关系和锁定词表确认项。输入摘要绑定所读规范 JSON 或锁定词表快照，context_sha256 绑定实际文件字节。
+
+冻结记录保存 context_id、candidates（有序 id/target）、candidates_sha256（规范 JSON 摘要）、frozen_at、before_first_comparison、supersedes、reason、changed_ids。候选变更只能新建冻结；对比后版本的 before_first_comparison 必须为 false，不倒填。清单 export 的 frozen_before_comparison_ids 是最早对比前冻结中的段 ID，符合 check_manifest 的段落覆盖契约。
+
+事件每行保存 kind（build/freeze/compare）、at、context_id、可选 freeze_id、prev_sha256（首行 null，否则前行含换行的原始字节 SHA-256）、sha256（去除此字段的规范 JSON 摘要）。build 绑定 manifest_sha256/context_sha256；freeze 绑定 freeze_sha256。读取检查全部事件及产物，未发布完整的孤立产物也拒绝。compare 在读取对照译稿之前追加。没有外部锚点，整链重算或无产物尾事件整体回滚不属于可证明的防篡改范围；此记录不证明操作者未接触旧译。
+
 ## 人工复核标签
 
 标签保存在库外（每条记录一个文件或一张独立表），至少含：记录来源与 ID、判定（correct / incorrect / uncertain）、可选说话人/听者/备注、保存时的库指纹与 `context_hash`、版本号与时间。库指纹或上下文变化后标签显示为过期，不自动迁移。
