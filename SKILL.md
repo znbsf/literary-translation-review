@@ -1,6 +1,6 @@
 ---
 name: literary-translation-review
-description: Review or retranslate book-length literature from the source, including source-first new candidates made before comparison, complete-book understanding, prior-work evidence from a source-bound corpus, dialogue and fixed-wording consistency, and annotated reader editions. Use for full-book revision, retranslation, and cross-volume consistency work, not ordinary sentence translation or imitation of an author's new work.
+description: Understand and organize complete literary works or series from sources, or review and retranslate book-length literature. Use for source-grounded work understanding, series reference material, full-book revision, retranslation, and cross-volume consistency, not ordinary sentence translation or imitation of an author's new work.
 ---
 
 # Literary Translation Review
@@ -9,9 +9,13 @@ description: Review or retranslate book-length literature from the source, inclu
 
 ## 开始前
 
-确认来源、目标版本、任务模式（审校或新译）、既有译本、相关前作、交付格式和已授权的发布/发送范围。先检查已有结果与断点。书稿与工具代码分别存放；公开工具包默认只含通用规则、模板、代码和自编示例。用户明确要求作品案例时，仅使用解释决策所需的少量引用，并注明作品与版本；不公开全书、私有资料库或机器路径，引用内容不纳入工具包许可。
+确认来源、目标版本、任务模式（独立作品理解、审校或新译）、既有译本、相关前作、交付格式和已授权的发布/发送范围。先检查已有结果与断点。书稿与工具代码分别存放；公开工具包默认只含通用规则、模板、代码和自编示例。用户明确要求作品案例时，仅使用解释决策所需的少量引用，并注明作品与版本；不公开全书、私有资料库或机器路径，引用内容不纳入工具包许可。
 
 记录实际运行模型、推理设置、资料覆盖、checkpoint、用户给出的预算硬上限及停止条件；不预设供应商或并发数。聊天模型和批处理模型可能不同，不能从界面设置推断后台模型。确定性的搜索、去重、ID核查和组装用本地程序。
+
+## 模式选择
+
+独立作品理解或系列资料整理：按 [references/work-understanding.md](references/work-understanding.md) 建立可回查的作品资料与覆盖记录；不要求每条关联翻译决定，也不默认启动译文生成、审校或现有翻译工具。翻译审校或新译：继续按下方工作流和既有台账要求执行，每条理解须关联翻译决定。两种模式均区分机器处理与人工确认，未实际读过的原文不得称为通读；段落计数不能证明全书理解。
 
 ## 资料库与工具
 
@@ -50,7 +54,8 @@ description: Review or retranslate book-length literature from the source, inclu
 
 ## 进一步资料
 
-- 全书理解、干净候选、建库、对齐、错误分类、执行记录与失败恢复：读 [references/evidence-and-corpus.md](references/evidence-and-corpus.md)。
+- 独立作品理解或系列资料整理的维度、流程与数据契约：读 [references/work-understanding.md](references/work-understanding.md)。
+- 翻译模式的全书理解、干净候选、建库、对齐、错误分类、执行记录与失败恢复：读 [references/evidence-and-corpus.md](references/evidence-and-corpus.md)。
 - 证据库的表结构、资格标记、库外候选、词表与复核标签格式：读 [references/data-model.md](references/data-model.md)。
 - 工具包命令、查看器配置与模型调用规则：读 [references/toolkit.md](references/toolkit.md)。
 - 向模型发送原文或译文前的运行授权与角色边界：读 [references/authorization.md](references/authorization.md)。
@@ -59,4 +64,8 @@ description: Review or retranslate book-length literature from the source, inclu
 
 ## 完成报告
 
-分别报告：全书阅读与八维理解覆盖、来源覆盖、已审段落、人物未知项、候选/确认对齐、词表版本、source-first 候选冻结与对比、改后复查、译注、EPUB结构、实际阅读和交付状态。记录实际模型、覆盖、预算消耗和checkpoint。测试PASS、抽检和模型自评不是全文校对或人工文学终审。没有子agent时可按文件隔离顺序在单会话执行；使用子agent也不能将并发角色称为模型或进程隔离证明。若尚有未完成范围，说明实际进度，不替用户缩减目标。
+独立理解模式报告来源与版本、实际阅读和机器处理范围、覆盖与缺口、候选及人工确认状态、争议与未决项，不借结构检查或段落计数宣称理解完成。
+
+翻译模式分别报告：全书阅读与八维理解覆盖、来源覆盖、已审段落、人物未知项、候选/确认对齐、词表版本、source-first 候选冻结与对比、改后复查、译注、EPUB结构、实际阅读和交付状态。记录实际模型、覆盖、预算消耗和checkpoint。测试PASS、抽检和模型自评不是全文校对或人工文学终审。没有子agent时可按文件隔离顺序在单会话执行；使用子agent也不能将并发角色称为模型或进程隔离证明。若尚有未完成范围，说明实际进度，不替用户缩减目标。
+
+单源 `work-understanding-records-v1` 可运行 `python scripts/check_work_understanding.py input.json --source-root ROOT [--manifest SOURCES_JSON]` 做只读结构、定位和哈希检查；它不证明阅读或理解，也不检查或替代旧 ledger。
